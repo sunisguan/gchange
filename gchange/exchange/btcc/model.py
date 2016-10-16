@@ -83,4 +83,49 @@ class AccountInfo(object):
     def __str__(self):
         return self.profile.__str__() + '\r[balance]: ' + self._balance.__str__() + '\r[frozen]: ' + self._frozen.__str__() + '\r[loan]: ' + self._loan.__str__() 
 
-    
+class PriceAmount(object):
+    def __init__(self, price, amount):
+        self.price = price
+        self.amount = amount
+
+    def __cmp__(self, other):
+        if self.price > other.price:
+            return 1
+        elif self.price < other.price:
+            return -1
+        else:
+            return 0
+
+
+class MarketDepth(object):
+    def __init__(self, json_data):
+        self.ask = []
+        self.bid = []
+        self._data = None
+
+        if json_data:
+            json_data = json_data['market_depth']
+            ask_data = json_data['ask']
+            for item in ask_data:
+                self.ask.append(PriceAmount(item['price'], item['amount']))
+            
+            ask_data = json_data['bid']
+            for item in ask_data:
+                self.bid.append(PriceAmount(item['price'], item['amount']))
+
+            self._data = json_data['date']
+
+class Order(object):
+    def __init__(self, orderId):
+        self.orderId = orderId
+
+class Deposit(object):
+    DEPOSIT_STATUS_PENDING = 'pending'
+    DEPOSIT_STATUS_COMPLETED = 'completed'
+    def __init__(self, status, currency, amount, address, date, deposit_id):
+        self.status = status
+        self.currency = currency
+        self.amount = amount
+        self.address = address
+        self.date = date
+        self.deposit_id = deposit_id
