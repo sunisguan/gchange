@@ -1,0 +1,80 @@
+{
+    "profile": {
+        "username": "sunisguan@icloud.com",
+        "daily_btc_limit": 10,
+        "trade_password_enabled": true,
+        "ltc_withdrawal_address": "",
+        "otp_enabled": true,
+        "api_key_permission": 3,
+        "daily_ltc_limit": 400,
+        "trade_fee_btcltc": 0,
+        "trade_fee": 0,
+        "id_verify": 1,
+        "ltc_deposit_address": "LiY1RbAfbiNGTnLEv2MrpMnv4JEHKzwuHM",
+        "trade_fee_cnyltc": 0,
+        "btc_withdrawal_address": "1EL4pGa3koNU7fNfrgsLcXZm3Krm73TkaL",
+        "btc_deposit_address": "125DDgMU5uvMG5xXGVZiBzxMetsUi6M4JH"
+    },
+    "frozen": {
+        "ltc": {
+            "currency": "LTC",
+            "symbol": "Ł",
+            "amount": "0.00000000",
+            "amount_decimal": 8,
+            "amount_integer": "0"
+        },
+        "btc": {
+            "currency": "BTC",
+            "symbol": "฿",
+            "amount": "0.00000000",
+            "amount_decimal": 8,
+            "amount_integer": "0"
+        },
+        "cny": {
+            "currency": "CNY",
+            "symbol": "¥",
+            "amount": "0.04000",
+            "amount_decimal": 5,
+            "amount_integer": "4000"
+        }
+    },
+    "loan": {
+        "btc": {
+            "currency": "BTC",
+            "symbol": "฿",
+            "amount": "0.00000000",
+            "amount_decimal": 8,
+            "amount_integer": "0"
+        },
+        "cny": {
+            "currency": "CNY",
+            "symbol": "¥",
+            "amount": "0.00000",
+            "amount_decimal": 5,
+            "amount_integer": "0"
+        }
+    },
+    "balance": {
+        "ltc": {
+            "currency": "LTC",
+            "symbol": "Ł",
+            "amount": "0.00000000",
+            "amount_decimal": 8,
+            "amount_integer": "0"
+        },
+        "btc": {
+            "currency": "BTC",
+            "symbol": "฿",
+            "amount": "0.00000000",
+            "amount_decimal": 8,
+            "amount_integer": "0"
+        },
+        "cny": {
+            "currency": "CNY",
+            "symbol": "¥",
+            "amount": "0.00222",
+            "amount_decimal": 5,
+            "amount_integer": "222"
+        }
+    }
+}

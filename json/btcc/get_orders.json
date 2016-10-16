@@ -1,0 +1,49 @@
+{
+    "date": 1476264671,
+    "order": [
+        {
+            "status": "open",
+            "price": "0.01",
+            "amount_original": "1.00000000",
+            "currency": "CNY",
+            "amount": "1.00000000",
+            "avg_price": 0,
+            "date": 1474187725,
+            "type": "bid",
+            "id": 743262426
+        },
+        {
+            "status": "open",
+            "price": "0.01",
+            "amount_original": "1.00000000",
+            "currency": "CNY",
+            "amount": "1.00000000",
+            "avg_price": 0,
+            "date": 1474187491,
+            "type": "bid",
+            "id": 743257099
+        },
+        {
+            "status": "open",
+            "price": "0.01",
+            "amount_original": "1.00000000",
+            "currency": "CNY",
+            "amount": "1.00000000",
+            "avg_price": 0,
+            "date": 1474187352,
+            "type": "bid",
+            "id": 743255108
+        },
+        {
+            "status": "open",
+            "price": "0.01",
+            "amount_original": "1.00000000",
+            "currency": "CNY",
+            "amount": "1.00000000",
+            "avg_price": 0,
+            "date": 1474187321,
+            "type": "bid",
+            "id": 743254717
+        }
+    ]
+}
