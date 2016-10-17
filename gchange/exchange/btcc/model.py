@@ -116,8 +116,17 @@ class MarketDepth(object):
             self._data = json_data['date']
 
 class Order(object):
-    def __init__(self, orderId):
-        self.orderId = orderId
+    def __init__(self, order_id, status, price, amount_original, currency, amount, avg_price, date, type):
+        self.order_id = order_id
+        self.status = status
+        self.price = price
+        self.amount_original = amount_original
+        self.currency = currency
+        self.amount = amount
+        self.avg_price = avg_price
+        self.date = date
+        self.type = type
+
 
 class Deposit(object):
     DEPOSIT_STATUS_PENDING = 'pending'
@@ -129,3 +138,13 @@ class Deposit(object):
         self.address = address
         self.date = date
         self.deposit_id = deposit_id
+
+class Transaction(object):
+    def __init__(self, ltc_amount, btc_amount, cny_amount, market, date, type, trans_id):
+        self.ltc_amount = ltc_amount
+        self.btc_amount = btc_amount
+        self.cny_amount = cny_amount
+        self.market = market
+        self.date = date
+        self.type = type
+        self.trans_id = trans_id

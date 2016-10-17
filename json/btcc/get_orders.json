@@ -12,6 +12,23 @@
             "type": "bid",
             "id": 743262426
         },
+        "order": {
+            "id": 2,
+            "type": "ask",
+            "price": "46.84",
+            "currency": "CNY",
+            "amount": "0.00000000",
+            "amount_original": "3.18400000",
+            "date": 1406860694,
+            "status": "closed",
+            "details": [
+                {
+                    "dateline": "1406860696",
+                    "price": "46.84",
+                    "amount": 3.184
+                }
+            ]
+        }
         {
             "status": "open",
             "price": "0.01",
