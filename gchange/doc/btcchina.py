@@ -57,14 +57,9 @@ class BTCChina():
             post_data['id']=tonce
 
         pd_hash=self._get_params_hash(post_data)
-
-        print("pd_hash = {}",  pd_hash)
  
         # must use b64 encode        
         auth_string='Basic '+base64.b64encode(self.access_key+':'+pd_hash)
-        print("auth_string = {}", auth_string)
-
-        print("post_data = {}", post_data)
         
         headers={'Authorization':auth_string,'Json-Rpc-Tonce':tonce}
  

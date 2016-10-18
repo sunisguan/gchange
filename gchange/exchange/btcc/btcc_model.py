@@ -30,7 +30,7 @@ class CurrencyBlock(object):
         return 'currency = {}, symbol = {}, amount = {}, amount_decimal = {}, amount_integer = {}'.format(self.currency, self.symbol, self.amount, self.amount_decimal, self.amount_decimal)
 
 class AccountInfo(object):
-    def __init__(self, userjson):
+    def __init__(self, userjson = None):
         self.profile = None
         self._balance = {}
         self._frozen = {}
@@ -116,8 +116,8 @@ class MarketDepth(object):
             self._data = json_data['date']
 
 class Order(object):
-    def __init__(self, order_id, status, price, amount_original, currency, amount, avg_price, date, type):
-        self.order_id = order_id
+    def __init__(self, id, status, price, amount_original, currency, amount, avg_price, date, type):
+        self.order_id = id
         self.status = status
         self.price = price
         self.amount_original = amount_original

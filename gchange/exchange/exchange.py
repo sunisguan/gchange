@@ -8,4 +8,6 @@ class Exchange(ABC):
     BTC = 'BTC'
     LTC = 'LTC'
     CNY = 'CNY'
-    pass
+
+    def buy_btc_limit(self, price, amount):
+        pass
