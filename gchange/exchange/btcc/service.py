@@ -93,31 +93,8 @@ class BTCCService(object):
         
         post_data = json.dumps(post_data)
 
-        resp = rq.post(self.baseUrl, headers = headers, data = post_data, hooks = dict(response = callback) if callback else None)
-
-        if resp.ok:
-            resp_dict = json.loads(resp.text)
-            #resp_dict = json.dumps(json.loads(response.read()))
+        return self._handle_service_resp(rq.post(self.baseUrl, headers = headers, data = post_data, hooks = dict(response = callback) if callback else None), post_data = post_data)
  
-            # The id's may need to be used by the calling application,
-            # but for now, check and discard from the return dict
-
-            if str(resp_dict['id']) == str(json.loads(post_data)['id']):
-                if 'result' in resp_dict:
-                    res = resp_dict['result']
-                    return res, True
-                elif 'error' in resp_dict:
-                    code = resp_dict['error']['code']
-                    print('[service name]: ', method)
-                    print('[service error]: ', BTCCService.ERR_CODE[code])
-                    return resp_dict['error'], False
-        else:
-            # not great error handling....
-            print('method: ', resp.url)
-            print("status: ", resp.status_code)
-            print("reason: ", resp.reason)
- 
-        return None
 
     def get_account_info(self, acount_type = None, callback = None):
         # type: GET_ACCOUNT_INFO_PARAMS, None == all
@@ -351,4 +328,49 @@ class BTCCService(object):
     def sell_stop_order():
         # sellStopOrder
         pass
+
+    def get_orderbook(self):
+        print('[{} start...]'.format(self.get_orderbook.__name__))
+        return self._handle_service_resp(rq.request('GET', 'https://pro-data.btcc.com/data/pro/orderbook'))
+    
+    def get_ticker(self):
+        print('[{} start...]'.format(self.get_ticker.__name__))
+        return self._handle_service_resp(rq.request('GET', 'https://pro-data.btcc.com/data/pro/ticker?symbol=XBTCNY'))
+
+    def get_history_data(self, limit = 100, since = None, sincetype = None):
+        print('[{} start...]'.format(self.get_history_data.__name__))
+        url = 'https://pro-data.btcc.com/data/pro/historydata?' + 'limit=' + str(limit)
+
+        if sincetype:
+            url += '&sincetype=' + sincetype
+        if since:
+            url += '&since=' + str(since)
+        print('url = ' + url)
+        return self._handle_service_resp(rq.request('GET', url))
+            
+
+    def _handle_service_resp(self, resp, post_data = None):
+        if resp.ok:
+            resp_dict = json.loads(resp.text)
+            #resp_dict = json.dumps(json.loads(response.read()))
+ 
+            # The id's may need to be used by the calling application,
+            # but for now, check and discard from the return dict
+            if isinstance(resp_dict, dict) and 'id' in resp_dict.keys() and str(resp_dict['id']) == str(json.loads(post_data)['id']):
+                if 'result' in resp_dict:
+                    res = resp_dict['result']
+                    return res, True
+                elif 'error' in resp_dict:
+                    code = resp_dict['error']['code']
+                    print('[service name]: ', method)
+                    print('[service error]: ', BTCCService.ERR_CODE[code])
+                    return resp_dict['error'], False
+            return resp_dict
+        else:
+            # not great error handling....
+            print('method: ', resp.url)
+            print("status: ", resp.status_code)
+            print("reason: ", resp.reason)
+            return None
+
 

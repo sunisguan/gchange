@@ -1,6 +1,7 @@
 from exchange.btcc.btcc_exchange import BTCCExchange
 from exchange.exchange import Exchange
 import json
+from exchange.utils import *
 
 
 def main():
@@ -10,7 +11,7 @@ def main():
     #cny_balance = btcc.get_account_balance(currency = Exchange.CNY)
     #print(cny_balance)
 
-    price = 100.00
+    '''price = 100.00
     amount = 0.001
     order = btcc.buy_btc_limit(price, amount)
     
@@ -21,7 +22,12 @@ def main():
 
     btcc.cancel_btc_orders(order_list)
 
+    #btcc.get_orderbook();
+    btcc.get_ticker()'''
 
+    time = time_to_timestamp('2016-08-08 19:10:04:889000', '%Y-%m-%d %H:%M:%S:%f')
+    btcc.get_history_data_by_time(time = time, limit = 10)
+    
 
     
     

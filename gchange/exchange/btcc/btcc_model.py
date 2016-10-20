@@ -1,3 +1,5 @@
+from ..utils import *
+
 class UserProfile(object):
     def __init__(self, username, daily_btc_limit, trade_password_enabled, ltc_withdrawal_address, otp_enabled, api_key_permission, daily_ltc_limit, trade_fee_btcltc, trade_fee, id_verify, ltc_deposit_address, trade_fee_cnyltc, btc_withdrawal_address, btc_deposit_address):
         self.username = username
@@ -85,8 +87,8 @@ class AccountInfo(object):
 
 class PriceAmount(object):
     def __init__(self, price, amount):
-        self.price = price
-        self.amount = amount
+        self.price = format_number_float4(price)
+        self.amount = format_number_float3(amount)
 
     def __cmp__(self, other):
         if self.price > other.price:
@@ -95,6 +97,9 @@ class PriceAmount(object):
             return -1
         else:
             return 0
+
+    def __str__(self):
+        return 'price = {0:.4f}, amount = {1:.4f}'.format(self.price, self.amount)
 
 
 class MarketDepth(object):
@@ -148,3 +153,51 @@ class Transaction(object):
         self.date = date
         self.type = type
         self.trans_id = trans_id
+
+class Ticker(object):
+    def __init__(self, BidPrice, AskPrice, Open, High, Low, Last, LastQuantity, PrevCls, Volume, Volume24H, Timestamp, ExecutionLimitDown, ExecutionLimitUp):
+        self.bid_price = format_number_float4(BidPrice)
+        self.ask_price = format_number_float4(AskPrice)
+        self.open = format_number_float4(Open)
+        self.high = format_number_float4(High)
+        # 近24小时内最低价格
+        self.low = format_number_float4(Low)
+        # 最新成交价格
+        self.last = format_number_float4(Last)
+        # 最新成交数量
+        self.last_quantity= LastQuantity
+        # 昨日收盘价
+        self.prev_cls = format_number_float4(PrevCls)
+        self.volume = format_number_float3(Volume)
+        self.volume24H = format_number_float3(Volume24H)
+        self.timestamp = Timestamp
+        # 价格下限
+        self.execution_limit_down = format_number_float4(ExecutionLimitDown)
+        # 价格上限
+        self.execution_limit_up = format_number_float4(ExecutionLimitUp)
+
+    def __str__(self):
+        return ('BidPrice = {0:.4f}, AskPrice = {1:.4f}, Open = {2:.4f}, High = {3:.4f}, Low = {4:.4f}, Last = {5:.4f}, ' + \
+        'LastQuantity = {6}, PrevCls = {7:.4f}, Volume = {8:.3f}, Volume24H = {9:.3f}, Timestamp ={10}, ' + \
+        'ExecutionLimitDown = {11:.4f}, ExecutionLimitUp = {12:.4f}').format(self.bid_price, self.ask_price, self.open, self.high, self.low, self.last, self.last_quantity, self.prev_cls, self.volume, self.volume24H, timestamp_to_str(self.timestamp), self.execution_limit_down, self.execution_limit_up)
+
+class HistoryData(object):
+    def __init__(self, Id, Timestamp, Price, Quantity, Side):
+        '''
+        id: 交易记录编号
+        Timestamp: Unix的时间（秒）自1970年1月1日
+        Price: 成交价格
+        Quantity: 数量
+        Side: Sell=卖 Buy=买
+        '''
+
+        self.order_id = Id
+        self.timestamp = Timestamp
+        self.price = Price
+        self.quantity = Quantity
+        self.side = Side
+
+    def __str__(self):
+        return 'timestamp = {}, id = {}, price = {}, amount = {}, side = {}'.format(timestamp_to_str(self.timestamp), self.order_id, self.price, self.quantity, self.side)
+        
+

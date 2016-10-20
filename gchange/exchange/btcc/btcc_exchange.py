@@ -1,6 +1,7 @@
 from ..exchange import Exchange
 from .service import BTCCService
 from .btcc_model import *
+from ..utils import timestamp_to_str
 
 class BTCCExchange(Exchange):
     '''
@@ -12,6 +13,11 @@ class BTCCExchange(Exchange):
         self._account = None
 
         self._temp_order = None
+
+        # {1453947915451: {asks: [], bids: []}}
+        self._orderbook = {}
+
+        self._ticker = None
 
         self._get_account_info()
     
@@ -74,6 +80,64 @@ class BTCCExchange(Exchange):
         for order in order_json['order']:
             order_list.append(Order(**order))
         return order_list
+
+    def get_orderbook(self):
+        res = self._service.get_orderbook();
+        # ask卖价
+        # bid买价
+        # date
+        if 'date' in res.keys():
+            ask = res['asks']
+            bids = res['bids']
+
+            ask_bids = {'asks': [], 'bids': []}
+            for p, a in ask:
+                ask_bids['asks'].append(PriceAmount(p, a))
+            for p, a in bids:
+                ask_bids['bids'].append(PriceAmount(p, a))
+
+            self._orderbook[res['date']] = ask_bids.copy()
+            self._print_orderbook()
+        else:
+            print('get orderbook fail')
+    
+    def _print_orderbook(self):
+        for date, value in self._orderbook.items():
+            print('date = ', date, '===========================')
+            for ask in value['asks']:
+                print('[ask][{}]{}'.format(timestamp_to_str(date), ask))
+            for bid in value['bids']:
+                print('[bid][{}]{}'.format(timestamp_to_str(date), bid))
+
+    def get_ticker(self):
+        res = self._service.get_ticker();
+
+        ticker_json = res['ticker']
+        if ticker_json:
+            self._ticker = Ticker(**ticker_json)
+            print(self._ticker)
+        else:
+            print('get ticker fail')
+
+    def get_history_data_by_time(self, time, limit = 100):
+        resp = self._service.get_history_data(since = time, sincetype = "time", limit = limit)
+        if resp and isinstance(resp, list):
+            for data in resp:
+                d = HistoryData(**data)
+                print(d)
+
+    def get_history_data_by_number(self, start_order_id, limit = 100):
+        # 查询此 order_id 起后面的 limit 条记录
+        return self._service.get_history_data(since = start_order_id, limit = limit)
+    
+
+
+
+    
+
+    
+
+
 
         
     

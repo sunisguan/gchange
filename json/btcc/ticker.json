@@ -1,0 +1,17 @@
+{
+  "ticker": 
+  {
+    "BidPrice": 3001,
+    "AskPrice": 3003,
+    "Open": 2625.6,
+    "High": 3888,
+    "Low": 2195,
+    "Last": 3002,
+    "LastQuantity": 1,
+    "PrevCls": 2642,
+    "Volume": 31140,
+    "Timestamp": 1453894229326,
+    "ExecutionLimitDown": 0,
+    "ExecutionLimitUp": 5250.6
+  }
+}
