@@ -1,7 +1,7 @@
 from ..exchange import Exchange
 from .service import BTCCService
 from .btcc_model import *
-from ..utils import timestamp_to_str
+from ..utils import timestamp_to_strtime
 
 class BTCCExchange(Exchange):
     '''
@@ -121,10 +121,12 @@ class BTCCExchange(Exchange):
 
     def get_history_data_by_time(self, time, limit = 100):
         resp = self._service.get_history_data(since = time, sincetype = "time", limit = limit)
+        history_data = []
         if resp and isinstance(resp, list):
             for data in resp:
                 d = HistoryData(**data)
-                print(d)
+                history_data.append(d)
+        return history_data
 
     def get_history_data_by_number(self, start_order_id, limit = 100):
         # 查询此 order_id 起后面的 limit 条记录

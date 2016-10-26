@@ -1,4 +1,5 @@
 from ..utils import *
+from peewee import *
 
 class UserProfile(object):
     def __init__(self, username, daily_btc_limit, trade_password_enabled, ltc_withdrawal_address, otp_enabled, api_key_permission, daily_ltc_limit, trade_fee_btcltc, trade_fee, id_verify, ltc_deposit_address, trade_fee_cnyltc, btc_withdrawal_address, btc_deposit_address):
@@ -182,22 +183,40 @@ class Ticker(object):
         'ExecutionLimitDown = {11:.4f}, ExecutionLimitUp = {12:.4f}').format(self.bid_price, self.ask_price, self.open, self.high, self.low, self.last, self.last_quantity, self.prev_cls, self.volume, self.volume24H, timestamp_to_str(self.timestamp), self.execution_limit_down, self.execution_limit_up)
 
 class HistoryData(object):
-    def __init__(self, Id, Timestamp, Price, Quantity, Side):
+
+    def __init__(self, tid, date, price, amount, type):
         '''
         id: 交易记录编号
-        Timestamp: Unix的时间（秒）自1970年1月1日
+        Timestamp: Unix的时间（秒）自1970年1月1日, 13位
         Price: 成交价格
         Quantity: 数量
         Side: Sell=卖 Buy=买
         '''
+        '''
+        date	string	Unix的时间（秒）自1970年1月1日, 10位
+        price	string	1个比特币的价格
+        amount	string	成交的比特币总量
+        tid	string	交易单号
+        type	string	表示交易为“买”或者“卖”
 
-        self.order_id = Id
-        self.timestamp = Timestamp
-        self.price = Price
-        self.quantity = Quantity
-        self.side = Side
+        '''
+
+        self.tid = tid
+        self._timestamp = date
+        self.price = price
+        self.amount = amount
+        self.type = type
+
+    @property
+    def timestamp(self):
+        return timestamp_to_strtime_10(self._timestamp)
+
+    def convert(self):
+        data = HistoryData_db.get(HistoryData_db.tid == self.tid)
+        if not data:
+            data = HistoryData_db.create()
 
     def __str__(self):
-        return 'timestamp = {}, id = {}, price = {}, amount = {}, side = {}'.format(timestamp_to_str(self.timestamp), self.order_id, self.price, self.quantity, self.side)
+        return 'timestamp = {}, id = {}, price = {}, amount = {}, type = {}'.format(self.timestamp, self.tid, self.price, self.amount, self.type)
         
 

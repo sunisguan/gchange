@@ -1,4 +1,5 @@
 {
   "gchange/test_models.py": true,
-  "gchange/test_service.py": true
+  "gchange/test_service.py": true,
+  "gchange/test_utils.py": true
 }

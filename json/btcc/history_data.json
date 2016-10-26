@@ -5,3 +5,18 @@
   "Quantity": 2,
   "Side": "Sell"
 }
+
+[{
+    "date":"1383374245",
+    "price":1278.7,
+    "amount":0.4,
+    "tid":"684284",
+    "type":"sell"
+    },
+    {
+    "date":"1383374245",
+    "price":1278.77,
+    "amount":0.35,
+    "tid":"684285",
+    "type":"buy"
+}]

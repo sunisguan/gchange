@@ -339,7 +339,9 @@ class BTCCService(object):
 
     def get_history_data(self, limit = 100, since = None, sincetype = None):
         print('[{} start...]'.format(self.get_history_data.__name__))
-        url = 'https://pro-data.btcc.com/data/pro/historydata?' + 'limit=' + str(limit)
+        # https://data.btcchina.com/data/historydata
+        # 'https://data.btcchina.com/data/historydata?'
+        url = 'https://data.btcchina.com/data/historydata?' + 'limit=' + str(limit)
 
         if sincetype:
             url += '&sincetype=' + sincetype
