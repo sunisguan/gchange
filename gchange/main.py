@@ -9,10 +9,12 @@ from exchange.exchange import Exchange
 import json
 from exchange.utils import *
 
+from exchange.btcc._btcc_data_db import *
+
 
 def main():
 
-    btcc = BTCCExchange()
+    #btcc = BTCCExchange()
     
     #cny_balance = btcc.get_account_balance(currency = Exchange.CNY)
     #print(cny_balance)
@@ -31,13 +33,18 @@ def main():
     #btcc.get_orderbook();
     btcc.get_ticker()'''
 
-    time = strtime_to_timestamp_10('2016-09-01 00:00:00')
-    history_datas = btcc.get_history_data_by_time(time = time, limit = 5000)
 
-    workbook = Workbook(encoding='UTF-8')
-    worksheet = workbook.add_sheet('history_data')
+    # btcc timestamp = 2011-06-13 13:13:24, id = 1, price = 150, amount = 1, type = buy 
+    # time = strtime_to_timestamp_10('2011-01-01 00:00:00')
+    # history_datas = btcc.get_history_data_by_time(time = time, limit = 100)
+
+
+
 
     '''
+    workbook = Workbook(encoding='UTF-8')
+    worksheet = workbook.add_sheet('history_data')
+    
     if len(history_datas):
         for row_index in range(0, len(history_datas)):
             data = history_datas[row_index]
@@ -49,8 +56,18 @@ def main():
         workbook.save('/Users/guanyayang/Documents/history_data_out.xls')
     '''
 
+    #history_data_delete_db()
+
+    history_data_write_db()
 
 
+    #last = HistoryData_db.select(HistoryData_db, fn.Max(HistoryData_db.tid)).get()
+    #print('last = ', last)
+
+    #for d in HistoryData_db.select():
+     #  print(d)
+
+    #print(HistoryData_db.select().count())
 
     
 

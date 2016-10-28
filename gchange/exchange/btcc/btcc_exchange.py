@@ -130,7 +130,13 @@ class BTCCExchange(Exchange):
 
     def get_history_data_by_number(self, start_order_id, limit = 100):
         # 查询此 order_id 起后面的 limit 条记录
-        return self._service.get_history_data(since = start_order_id, limit = limit)
+        resp = self._service.get_history_data(since = start_order_id, limit = limit, sincetype = 'id')
+        history_data = []
+        if resp and isinstance(resp, list):
+            for data in resp:
+                d = HistoryData(**data)
+                history_data.append(d)
+        return history_data
     
 
 

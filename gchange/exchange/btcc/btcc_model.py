@@ -1,5 +1,6 @@
 from ..utils import *
 from peewee import *
+from .btcc_model_db import *
 
 class UserProfile(object):
     def __init__(self, username, daily_btc_limit, trade_password_enabled, ltc_withdrawal_address, otp_enabled, api_key_permission, daily_ltc_limit, trade_fee_btcltc, trade_fee, id_verify, ltc_deposit_address, trade_fee_cnyltc, btc_withdrawal_address, btc_deposit_address):
@@ -182,7 +183,7 @@ class Ticker(object):
         'LastQuantity = {6}, PrevCls = {7:.4f}, Volume = {8:.3f}, Volume24H = {9:.3f}, Timestamp ={10}, ' + \
         'ExecutionLimitDown = {11:.4f}, ExecutionLimitUp = {12:.4f}').format(self.bid_price, self.ask_price, self.open, self.high, self.low, self.last, self.last_quantity, self.prev_cls, self.volume, self.volume24H, timestamp_to_str(self.timestamp), self.execution_limit_down, self.execution_limit_up)
 
-class HistoryData(object):
+class HistoryData(ModelAdapter):
 
     def __init__(self, tid, date, price, amount, type):
         '''
@@ -211,10 +212,11 @@ class HistoryData(object):
     def timestamp(self):
         return timestamp_to_strtime_10(self._timestamp)
 
-    def convert(self):
-        data = HistoryData_db.get(HistoryData_db.tid == self.tid)
-        if not data:
-            data = HistoryData_db.create()
+    def model_adapt(self):
+        if HistoryData_db.select().where(HistoryData_db.tid == self.tid).exists():
+            return HistoryData_db.get(HistoryData_db.tid == self.tid)
+        else:
+            return HistoryData_db.create(tid = self.tid, timestamp = self._timestamp, date = self.timestamp, amount = self.amount, type = self.type, price = self.price)
 
     def __str__(self):
         return 'timestamp = {}, id = {}, price = {}, amount = {}, type = {}'.format(self.timestamp, self.tid, self.price, self.amount, self.type)
