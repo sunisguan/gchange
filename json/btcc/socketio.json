@@ -1,0 +1,47 @@
+('grouporder', 
+    (
+        {
+            u'grouporder': 
+                {u'ask': 
+                    [
+                        {u'totalamount': 0.256, u'price': 4696, u'type': u'ask'}, 
+                        {u'totalamount': 1.399, u'price': 4695.98, u'type': u'ask'}, 
+                        {u'totalamount': 0.0011, u'price': 4695.61, u'type': u'ask'}, 
+                        {u'totalamount': 0.355, u'price': 4695.55, u'type': u'ask'}, 
+                        {u'totalamount': 0.294, u'price': 4695, u'type': u'ask'}
+                    ], 
+                u'bid': 
+                    [
+                        {u'totalamount': 0.657, u'price': 4694.99, u'type': u'bid'}, 
+                        {u'totalamount': 0.654, u'price': 4694.67, u'type': u'bid'}, 
+                        {u'totalamount': 0.001, u'price': 4694.42, u'type': u'bid'}, 
+                        {u'totalamount': 0.268, u'price': 4694.33, u'type': u'bid'}, 
+                        {u'totalamount': 0.541, u'price': 4694.29, u'type': u'bid'}
+                    ], 
+                u'market': u'btccny'}
+        },
+    )
+)
+
+
+
+(
+    'ticker', 
+        (
+            {
+                u'ticker': 
+                    {
+                        u'sell': 4702.73, u'buy': 4701.91, u'last': 4736.5, u'vol': 2880439.9722, u'prev_close': 4744.41, u'vwap': 4738.18, u'high': 4777.53, u'low': 4600, u'date': 1478353928, u'open': 4744.45, u'market': u'btccny'
+                    }
+            },
+        )
+)
+
+
+
+(
+    'trade', 
+        (
+            {u'price': 4702.72, u'trade_id': 95480288, u'amount': 2, u'date': 1478353929, u'type': u'buy', u'market': u'btccny'},
+        )
+)
