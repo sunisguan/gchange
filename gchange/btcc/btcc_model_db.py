@@ -1,5 +1,7 @@
 from peewee import *
-from .btcc_model import *
+
+from gchange.btcc.btcc_model import *
+
 
 class ModelAdapter(object):
     def model_adapt(self):

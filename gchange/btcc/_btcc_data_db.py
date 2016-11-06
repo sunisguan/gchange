@@ -1,9 +1,8 @@
+from exchange.btcc.btcc_exchange import BTCCExchange
 from peewee import *
 
-from .btcc_model_db import *
-from .btcc_model_db import db
-
-from exchange.btcc.btcc_exchange import BTCCExchange
+from gchange.btcc.btcc_model_db import *
+from gchange.btcc.btcc_model_db import db
 
 btcc = BTCCExchange()
 

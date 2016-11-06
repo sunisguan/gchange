@@ -1,6 +1,7 @@
-from ..utils import *
 from peewee import *
-from .btcc_model_db import *
+
+from gchange.btcc.btcc_model_db import *
+
 
 class UserProfile(object):
     def __init__(self, username, daily_btc_limit, trade_password_enabled, ltc_withdrawal_address, otp_enabled, api_key_permission, daily_ltc_limit, trade_fee_btcltc, trade_fee, id_verify, ltc_deposit_address, trade_fee_cnyltc, btc_withdrawal_address, btc_deposit_address):
