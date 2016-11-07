@@ -90,6 +90,11 @@ class BtccWebsocketClient(BaseNamespace):
     ON_CONNECTED = 3
     ON_DISCONNECTED = 4
 
+    def __init__(self, io, path=''):
+        super(BtccWebsocketClient, self).__init__(io, path)
+        self.__queue = Queue.Queue()
+        self.__io = io
+
     def get_queue(self):
         return self.__queue
 
@@ -132,16 +137,22 @@ class BtccWebsocketClient(BaseNamespace):
 
         return base64.b64encode(common.BTCC_ACCESS_KEY + ':' + phash)
 
+    def start_listen(self):
+        namespace = self.__io.define(BtccWebsocketClient)
+        namespace.emit('subscribe', 'marketdata_cnybtc')
+
+    def start_client(self):
+        self.__io.wait()
+
     def stop_client(self):
         self.disconnect()
 
     def on_connect(self):
-        self.__queue = Queue.Queue()
         print('[Connected]')
 
     def on_disconnect(self):
         print('[Disconnect]')
-        self.__queue.put((BtccWebsocketClient.ON_DISCONNECTED, None))
+        self.__queue.put(BtccWebsocketClient.ON_DISCONNECTED, None)
 
     def on_ticker(self, *args):
         #print('ticker', args)
@@ -179,25 +190,21 @@ class BtccWebsocketClient(BaseNamespace):
 
 
 class WebSocketClientThread(threading.Thread):
+    def __init__(self):
+        super(WebSocketClientThread, self).__init__()
+        self.__ws_client = BtccWebsocketClient(io=SocketIO('websocket.btcc.com', 80))
+
     def get_queue(self):
         return self.__ws_client.get_queue()
 
-    def __init__(self):
-        super(WebSocketClientThread, self).__init__()
-        self.__socket_io = SocketIO('websocket.btcc.com', 80)
-        self.__ws_client = self.__socket_io.define(BtccWebsocketClient)
-
-
     def start(self):
-        #self.__ws_client.emit('subscribe', 'marketdata_cnybtc')
-        #self.__ws_client.emit('subscribe', 'grouporder_cnybtc')
-        #self.__socket_io.wait()
-
+        self.__ws_client.start_listen()
+        print 'start listen'
         super(WebSocketClientThread, self).start()
 
     def run(self):
-
-        tornado.ioloop.IOLoop.instance().start()
+        super(WebSocketClientThread, self).run()
+        self.__ws_client.start_client()
 
     def stop(self):
         try:
