@@ -1,10 +1,10 @@
 from pyalgotrade import bar
 from pyalgotrade import barfeed
 from pyalgotrade import observer
-from . import common
+import common
 import time
 import datetime
-from . import websocket_client
+import websocket_client
 import Queue
 
 
@@ -111,7 +111,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
             common.logger.error('Error connecting : %s' % str(e))
         # Wait for initialization to complete
         while self.__initializationOk is None and self.__thread.is_alive():
-            self.__dispatchImpl([websocket_client.BtccWebsocket.ON_CONNECTED])
+            self.__dispatchImpl([websocket_client.BtccWebsocketClient.ON_CONNECTED])
 
         if self.__initializationOk:
             common.logger.info('Initialization ok')
@@ -136,7 +136,8 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
     def __dispatchImpl(self, eventFilter):
         ret = False
         try:
-            eventType, eventData = self.__thread.getQueue().get(True, LiveTradeFeed.QUEUE_TIMEOUT)
+            common.logger.info(self.__thread.get_queue().qsize())
+            eventType, eventData = self.__thread.get_queue().get(True, LiveTradeFeed.QUEUE_TIMEOUT)
             if eventFilter is not None and eventType not in eventFilter:
                 return False
 
