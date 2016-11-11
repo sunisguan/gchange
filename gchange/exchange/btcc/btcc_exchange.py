@@ -81,23 +81,14 @@ class BTCCExchange(Exchange):
             order_list.append(Order(**order))
         return order_list
 
-    def get_orderbook(self):
+    def get_orderbook_btc(self):
+        # 获取买卖订单，包含所有公开的要价和出价
         res = self._service.get_orderbook();
         # ask卖价
         # bid买价
         # date
         if 'date' in res.keys():
-            ask = res['asks']
-            bids = res['bids']
-
-            ask_bids = {'asks': [], 'bids': []}
-            for p, a in ask:
-                ask_bids['asks'].append(PriceAmount(p, a))
-            for p, a in bids:
-                ask_bids['bids'].append(PriceAmount(p, a))
-
-            self._orderbook[res['date']] = ask_bids.copy()
-            self._print_orderbook()
+            return OrderbookList(res)
         else:
             print('get orderbook fail')
     
@@ -109,13 +100,13 @@ class BTCCExchange(Exchange):
             for bid in value['bids']:
                 print('[bid][{}]{}'.format(timestamp_to_str(date), bid))
 
-    def get_ticker(self):
+    def get_ticker_btc(self):
         res = self._service.get_ticker();
 
         ticker_json = res['ticker']
         if ticker_json:
             self._ticker = Ticker(**ticker_json)
-            print(self._ticker)
+            return self._ticker
         else:
             print('get ticker fail')
 

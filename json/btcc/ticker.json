@@ -1,17 +1,15 @@
 {
-  "ticker": 
+  "ticker":
   {
-    "BidPrice": 3001,
-    "AskPrice": 3003,
-    "Open": 2625.6,
-    "High": 3888,
-    "Low": 2195,
-    "Last": 3002,
-    "LastQuantity": 1,
-    "PrevCls": 2642,
-    "Volume": 31140,
-    "Timestamp": 1453894229326,
-    "ExecutionLimitDown": 0,
-    "ExecutionLimitUp": 5250.6
-  }
+    "high":"4949.67",
+    "low":"4734.74",
+    "buy":"4871.07",
+    "sell":"4872.42",
+    "last":"4871.08",
+    "vol":"3750215.35490000",
+    "date":1477819836,
+    "vwap":"4837.68",
+    "prev_close":"4898",
+    "open":"4898"
+    }
 }

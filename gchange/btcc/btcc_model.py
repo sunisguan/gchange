@@ -158,31 +158,35 @@ class Transaction(object):
         self.trans_id = trans_id
 
 class Ticker(object):
-    def __init__(self, BidPrice, AskPrice, Open, High, Low, Last, LastQuantity, PrevCls, Volume, Volume24H, Timestamp, ExecutionLimitDown, ExecutionLimitUp):
-        self.bid_price = format_number_float4(BidPrice)
-        self.ask_price = format_number_float4(AskPrice)
-        self.open = format_number_float4(Open)
-        self.high = format_number_float4(High)
+    def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):
+        # 近24小时内最高价格
+        self.high = high
         # 近24小时内最低价格
-        self.low = format_number_float4(Low)
-        # 最新成交价格
-        self.last = format_number_float4(Last)
-        # 最新成交数量
-        self.last_quantity= LastQuantity
+        self.low = low
+        # 最高出价
+        self.buy = buy
+        # 最低要价
+        self.sell = sell
+        # 最新成交价
+        self.last = last
+        # 近24小时内比特币成交量
+        self.vol = vol
+        # 最新更新时间戳
+        self._timestamp = date
+        # 近24小时内平均成交价
+        self.vwap = vwap
         # 昨日收盘价
-        self.prev_cls = format_number_float4(PrevCls)
-        self.volume = format_number_float3(Volume)
-        self.volume24H = format_number_float3(Volume24H)
-        self.timestamp = Timestamp
-        # 价格下限
-        self.execution_limit_down = format_number_float4(ExecutionLimitDown)
-        # 价格上限
-        self.execution_limit_up = format_number_float4(ExecutionLimitUp)
+        self.prev_close = prev_close
+        # 今日开盘价
+        self.open = open 
+
+    @property
+    def date(self):
+        return timestamp_to_strtime_10(self._timestamp)
 
     def __str__(self):
-        return ('BidPrice = {0:.4f}, AskPrice = {1:.4f}, Open = {2:.4f}, High = {3:.4f}, Low = {4:.4f}, Last = {5:.4f}, ' + \
-        'LastQuantity = {6}, PrevCls = {7:.4f}, Volume = {8:.3f}, Volume24H = {9:.3f}, Timestamp ={10}, ' + \
-        'ExecutionLimitDown = {11:.4f}, ExecutionLimitUp = {12:.4f}').format(self.bid_price, self.ask_price, self.open, self.high, self.low, self.last, self.last_quantity, self.prev_cls, self.volume, self.volume24H, timestamp_to_str(self.timestamp), self.execution_limit_down, self.execution_limit_up)
+        s = 'high = {}, low = {}, buy = {}, sell = {}, last = {}, vol = {}, date = {}, vwap = {}, prev_close = {}, open = {}'
+        return s.format(self.high, self.low, self.buy, self.sell, self.last, self.vol, self.date, self.vwap, self.prev_close, self.open)
 
 class HistoryData(ModelAdapter):
 
@@ -221,5 +225,49 @@ class HistoryData(ModelAdapter):
 
     def __str__(self):
         return 'timestamp = {}, id = {}, price = {}, amount = {}, type = {}'.format(self.timestamp, self.tid, self.price, self.amount, self.type)
+
+class OrderbookList(object):
+    '''
+    用于 btcc_exchange, get_orderbook_*
+    '''
+    def __init__(self, json_data):
+        # json_data
+            # ask卖价
+            # bid买价
+            # date
+
+        self.ask_bids = {'asks': [], 'bids': []}
+        self.date = None
+        
+        ask = json_data['asks']
+        bids = json_data['bids']
+
+        for p, a in ask:
+            self.ask_bids['asks'].append(PriceAmount(p, a))
+        for p, a in bids:
+            self.ask_bids['bids'].append(PriceAmount(p, a))
+            
+        self.date = timestamp_to_strtime_10(json_data['date'])
+
+    @property
+    def asks(self):
+        return self.ask_bids['asks']
+    
+    @property
+    def bids(self):
+        return self.ask_bids['bids']
+
+    def __str__(self):
+        s = self.date + '\n'
+        for a in self.asks:
+            s += 'asks:'
+            s += str(a)
+            s += '\n'
+        for b in self.bids:
+            s += 'bids:'
+            s += str(b)
+            s += '\n'
+
+        return s
         
 

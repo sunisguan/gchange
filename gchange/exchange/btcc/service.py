@@ -329,13 +329,16 @@ class BTCCService(object):
         # sellStopOrder
         pass
 
-    def get_orderbook(self):
+    def get_orderbook(self, market = MARKET_PARAMS_BTCCNY, limit = 10):
+        # 获取买卖订单，包含所有公开的要价和出价
         print('[{} start...]'.format(self.get_orderbook.__name__))
-        return self._handle_service_resp(rq.request('GET', 'https://pro-data.btcc.com/data/pro/orderbook'))
+        url = 'https://data.btcchina.com/data/orderbook?' + 'limit=' + str(limit) + '&market=' + market
+        print(url)
+        return self._handle_service_resp(rq.request('GET', url))
     
-    def get_ticker(self):
+    def get_ticker(self, market = MARKET_PARAMS_BTCCNY):
         print('[{} start...]'.format(self.get_ticker.__name__))
-        return self._handle_service_resp(rq.request('GET', 'https://pro-data.btcc.com/data/pro/ticker?symbol=XBTCNY'))
+        return self._handle_service_resp(rq.request('GET', 'https://data.btcchina.com/data/ticker?market=' + market))
 
     def get_history_data(self, limit = 100, since = None, sincetype = None):
         print('[{} start...]'.format(self.get_history_data.__name__))
