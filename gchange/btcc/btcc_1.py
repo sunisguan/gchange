@@ -19,8 +19,15 @@ class Strategy(strategy.BaseStrategy):
         self.__posSize = 0.05
 
         # Subscribe to order book update events to get bid/ask prices to trade.
-        feed.getOrderBookUpdateEvent().subscribe(self.__onOrderBookUpdate)
+        #feed.getOrderBookUpdateEvent().subscribe(self.__onOrderBookUpdate)
+        feed.get_marketdepth_update_event().subscribe(self.__onMarketdepth_update)
 
+    def __onMarketdepth_update(self, marketdepth):
+        print self.__onMarketdepth_update.__name__
+        print marketdepth
+        pass
+
+    """
     def __onOrderBookUpdate(self, orderBookUpdate):
         bid = orderBookUpdate.getBidPrices()[0]
         ask = orderBookUpdate.getAskPrices()[0]
@@ -29,6 +36,8 @@ class Strategy(strategy.BaseStrategy):
             self.__bid = bid
             self.__ask = ask
             self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
+
+    """
 
     def onEnterOk(self, position):
         self.info("Position opened at %s" % (position.getEntryOrder().getExecutionInfo().getPrice()))

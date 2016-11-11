@@ -8,6 +8,12 @@ import datetime
 import websocket_client
 import Queue
 
+class MarketDepthBar(bar.Bar):
+    __slots__ = ('__datetime', '__tid', '__price', '__amount')
+
+    def __init__(self):
+        pass
+
 
 class TradeBar(bar.Bar):
     __slots__ = ('__dateTime', '__tradeId', '__price', '__amount')
@@ -89,6 +95,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         self.__enableReconnection = True
         self.__stopped = False
         self.__orderBookUpdateEvent = observer.Event()
+        self.__marketdepth_update_event = observer.Event()
 
     def buildWebSocketClientThread(self):
         return websocket_client.WebSocketClientThread()
@@ -151,7 +158,8 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
             elif eventType == websocket_client.BtccWebsocketClient.ON_DISCONNECTED:
                 self.__onDisconnected()
             elif eventType == websocket_client.BtccWebsocketClient.ON_MARKETDEPTH:
-                self.__onMarketDepth(eventData)
+                #self.__onMarketDepth(eventData)
+                self.__marketdepth_update_event.emit(eventData)
             else:
                 ret = False
                 common.logger.error('Invalid event received to dispatch: %s - %s' % (eventType, eventData))
@@ -253,6 +261,9 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         :return: pyalgotrade.observer.Event
         """
         return self.__orderBookUpdateEvent
+
+    def get_marketdepth_update_event(self):
+        return self.__marketdepth_update_event
 
 
 
