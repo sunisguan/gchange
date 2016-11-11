@@ -158,7 +158,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
             elif eventType == websocket_client.BtccWebsocketClient.ON_DISCONNECTED:
                 self.__onDisconnected()
             elif eventType == websocket_client.BtccWebsocketClient.ON_MARKETDEPTH:
-                #self.__onMarketDepth(eventData)
+                self.__onMarketDepth(eventData)
                 self.__marketdepth_update_event.emit(eventData)
             else:
                 ret = False

@@ -113,7 +113,7 @@ class MarketDepth(object):
         def get_amount(self):
             return self.__totalamount
         def get_price(self):
-            return self.__type
+            return self.__price
 
     def __init__(self, ask, bid, market):
         self.__asks = []
@@ -125,6 +125,18 @@ class MarketDepth(object):
         for item in bid:
             item = MarketDepth.Depth(**item)
             self.__bids.append(item)
+
+        self.__asks.sort(key=lambda x:x.get_price(), reverse=True)
+        self.__bids.sort(key=lambda x: x.get_price(), reverse=True)
+
+    def get_asks(self):
+        return self.__asks
+    def get_bids(self):
+        return self.__bids
+    def get_top_ask(self):
+        return self.__asks[0]
+    def get_top_bid(self):
+        return self.__bids[0]
 
 class BtccWebsocketClient(BaseNamespace):
 
@@ -188,15 +200,20 @@ class BtccWebsocketClient(BaseNamespace):
         self.__queue.put((BtccWebsocketClient.ON_CONNECTED, None))
 
     def on_disconnect(self):
-        print('[Disconnect]')
         self.__queue.put(BtccWebsocketClient.ON_DISCONNECTED, None)
+        print('[Disconnect]')
 
     def on_ticker(self, *args):
         #print('ticker', args)
         pass
 
     def on_trade(self, *args):
-        self._on_trade(Trade(get_current_datetime(), args))
+        t = Trade(**args[0])
+        t.updateDateTime(self.__millisecond_to_add)
+        self.__millisecond_to_add += 1
+        #if self.__millisecond_to_add > 999:
+        #   self.__millisecond_to_add = 1
+        self.__queue.put((BtccWebsocketClient.ON_TRADE, t))
 
     def on_grouporder(self, *args):
         #print args[0]['grouporder']
@@ -218,14 +235,6 @@ class BtccWebsocketClient(BaseNamespace):
     def on_error(self, data):
         common.logger.error("Error: %s" % (data))
 
-    def _on_trade(self, trade):
-        t = Trade(**trade)
-        t.updateDateTime(self.__millisecond_to_add)
-        self.__millisecond_to_add += 1
-        if self.__millisecond_to_add > 999:
-            self.__millisecond_to_add = 1
-        self.__queue.put((BtccWebsocketClient.ON_TRADE, t))
-
     def _on_marketdepth(self, marketdepth):
         self.__queue.put((BtccWebsocketClient.ON_MARKETDEPTH, marketdepth))
 
@@ -246,17 +255,18 @@ class WebSocketClientThread(threading.Thread):
     def start(self):
         self.__socketIO = SocketIO('websocket.btcc.com', 80)
         self.__ws_client = self.__socketIO.define(BtccWebsocketClient)
-        #self.__ws_client.emit('subscribe', 'marketdata_cnybtc')
+        self.__ws_client.emit('subscribe', 'marketdata_cnybtc')
         self.__ws_client.emit('subscribe', 'grouporder_cnybtc')
         super(WebSocketClientThread, self).start()
 
     def run(self):
         super(WebSocketClientThread, self).run()
-        self.__socketIO.wait()
+        self.__socketIO.wait(seconds=10)
+        self.__ws_client.disconnect()
 
     def stop(self):
         try:
             common.logger.info("Stopping websocket client.")
-            self.__ws_client.disconnect()
+            #self.__ws_client.disconnect()
         except Exception, e:
             common.logger.error("Error stopping websocket client: %s." % (str(e)))

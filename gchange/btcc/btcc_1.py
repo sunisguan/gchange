@@ -23,9 +23,13 @@ class Strategy(strategy.BaseStrategy):
         feed.get_marketdepth_update_event().subscribe(self.__onMarketdepth_update)
 
     def __onMarketdepth_update(self, marketdepth):
-        print self.__onMarketdepth_update.__name__
-        print marketdepth
-        pass
+        bid = marketdepth.get_top_bid()
+        ask = marketdepth.get_top_ask()
+
+        if bid != self.__bid or ask != self.__ask:
+            self.__bid = bid.get_price()
+            self.__ask = ask.get_price()
+            self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
 
     """
     def __onOrderBookUpdate(self, orderBookUpdate):
@@ -54,9 +58,12 @@ class Strategy(strategy.BaseStrategy):
         # If the exit was canceled, re-submit it.
         self.__position.exitLimit(self.__bid)
 
+    def onFinish(self, bars):
+        print 'finish'
+
     def onBars(self, bars):
         bar = bars[self.__instrument]
-        self.info("Price: %s. Volume: %s." % (bar.getClose(), bar.getVolume()))
+        #self.info("Price: %s. Volume: %s." % (bar.getClose(), bar.getVolume()))
 
         # Wait until we get the current bid/ask prices.
         if self.__ask is None:
@@ -77,8 +84,42 @@ def main():
     bar_feed = LiveTradeFeed()
     brk = BacktestingBroker(1000, bar_feed)
     strat = Strategy(bar_feed, brk)
+    plot = True
+
+    ############################################# don't change ############################
+    from pyalgotrade.stratanalyzer import returns
+    from pyalgotrade.stratanalyzer import sharpe
+    from pyalgotrade.stratanalyzer import drawdown
+    from pyalgotrade.stratanalyzer import trades
+    from pyalgotrade import plotter
+
+    retAnalyzer = returns.Returns()
+    strat.attachAnalyzer(retAnalyzer)
+    sharpeRatioAnalyzer = sharpe.SharpeRatio()
+    strat.attachAnalyzer(sharpeRatioAnalyzer)
+    drawDownAnalyzer = drawdown.DrawDown()
+    strat.attachAnalyzer(drawDownAnalyzer)
+    tradesAnalyzer = trades.Trades()
+    strat.attachAnalyzer(tradesAnalyzer)
+
+    if plot:
+        plt = plotter.StrategyPlotter(strat, True, True, True)
 
     strat.run()
+    print '-------'
+    if plot:
+        plt.plot()
+
+    # 夏普率
+    sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
+    # 最大回撤
+    maxdd = drawDownAnalyzer.getMaxDrawDown()
+    # 收益率
+    return_ = retAnalyzer.getCumulativeReturns()[-1]
+    # 收益曲线
+    return_list = []
+    for item in retAnalyzer.getCumulativeReturns():
+        return_list.append(item)
 
 if __name__ == "__main__":
     main()
