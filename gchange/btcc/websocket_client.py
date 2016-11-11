@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """ An example for Python Socket.io Client
     Requires: six,socketIO_client
 """
@@ -7,7 +8,6 @@ import re
 import hmac
 import hashlib
 import base64
-import tornado
 
 import common
 from pyalgotrade.websocket import pusher
@@ -15,55 +15,75 @@ import threading
 import Queue
 import datetime
 
-import logging
-#logging.getLogger('socketIO-client').setLevel(logging.DEBUG)
+from ..utils import TimeUtils
 
 def get_current_datetime():
     return datetime.datetime.now()
 
-class Trade(pusher.Event):
+class Trade(object):
     """
     A trade event
     """
 
-    def __init__(self, dateTime, eventDict):
-        super(Trade, self).__init__(eventDict, True)
-        self.__dateTime = dateTime
+    def __init__(self, price, trade_id, amount, date, type, market):
+        self.__price = price
+        self.__tid = trade_id
+        self.__amount = amount
+        self.__date = date
+        self.__type = type
+        self.__market = market
+        self.__datetime = TimeUtils.timestamp_to_datetime(self.__date)
 
     def getDateTime(self):
         """Returns the :class:`datetime.datetime` when this event was received."""
-        return self.__dateTime
+        return self.__datetime
+
+    def updateDateTime(self, m=0):
+        if m <= 0:
+            return self.getDateTime()
+        else:
+            self.__datetime += datetime.timedelta(milliseconds=m)
+            return self.getDateTime()
 
     def getId(self):
         """Returns the trade id."""
-        return self.getData()['id']
+        return self.__tid
 
     def getPrice(self):
         """Returns the trade price."""
-        return self.getData()["price"]
+        return self.__price
 
     def getAmount(self):
         """Returns the trade amount."""
-        return self.getData()["amount"]
+        return self.__amount
 
     def isBuy(self):
         """Returns True if the trade was a buy."""
-        return self.getData()["type"] == 0
+        return self.__type == 'buy'
 
     def isSell(self):
         """Returns True if the trade was a sell."""
-        return self.getData()["type"] == 1
+        return self.__type == 'sell'
 
-class OrderBookUpdate(pusher.Event):
+class Ticker(object):
     """An order book update event."""
 
-    def __init__(self, dateTime, eventDict):
-        super(OrderBookUpdate, self).__init__(eventDict, True)
-        self.__dateTime = dateTime
+    def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):
+        self.__high = high
+        self.__low = low
+        self.__buy = buy
+        self.__sell = sell
+        self.__last = last
+        self.__vol = vol
+        self.__date = date
+        self.__vwap = vwap
+        self.__prev_close = prev_close
+        self.__open = open
+        self.__datetime = TimeUtils.timestamp_to_datetime(self.__date)
 
     def getDateTime(self):
         """Returns the :class:`datetime.datetime` when this event was received."""
-        return self.__dateTime
+        return self.__datetime
 
     def getBidPrices(self):
         """Returns a list with the top 20 bid prices."""
@@ -81,6 +101,30 @@ class OrderBookUpdate(pusher.Event):
         """Returns a list with the top 20 ask volumes."""
         return [float(ask[1]) for ask in self.getData()["asks"]]
 
+class MarketDepth(object):
+    class Depth(object):
+        def __init__(self, totalamount, price, type):
+            self.__totalamount = totalamount
+            self.__price = price
+            self.__type = type
+
+        def get_type(self):
+            return self.__type
+        def get_amount(self):
+            return self.__totalamount
+        def get_price(self):
+            return self.__type
+
+    def __init__(self, ask, bid, market):
+        self.__asks = []
+        self.__bids = []
+        self.__market = market
+        for item in ask:
+            item = MarketDepth.Depth(**item)
+            self.__asks.append(item)
+        for item in bid:
+            item = MarketDepth.Depth(**item)
+            self.__bids.append(item)
 
 class BtccWebsocketClient(BaseNamespace):
 
@@ -89,11 +133,13 @@ class BtccWebsocketClient(BaseNamespace):
     ON_ORDER_BOOK_UPDATE = 2
     ON_CONNECTED = 3
     ON_DISCONNECTED = 4
+    ON_MARKETDEPTH = 5
 
-    def __init__(self, io, path=''):
+    def __init__(self, io, path = ''):
         super(BtccWebsocketClient, self).__init__(io, path)
         self.__queue = Queue.Queue()
-        self.__io = io
+        # btcc返回的 trade 时间没有毫秒，导致时间时间相同
+        self.__millisecond_to_add = 1
 
     def get_queue(self):
         return self.__queue
@@ -137,18 +183,9 @@ class BtccWebsocketClient(BaseNamespace):
 
         return base64.b64encode(common.BTCC_ACCESS_KEY + ':' + phash)
 
-    def start_listen(self):
-        namespace = self.__io.define(BtccWebsocketClient)
-        namespace.emit('subscribe', 'marketdata_cnybtc')
-
-    def start_client(self):
-        self.__io.wait()
-
-    def stop_client(self):
-        self.disconnect()
-
     def on_connect(self):
         print('[Connected]')
+        self.__queue.put((BtccWebsocketClient.ON_CONNECTED, None))
 
     def on_disconnect(self):
         print('[Disconnect]')
@@ -159,11 +196,12 @@ class BtccWebsocketClient(BaseNamespace):
         pass
 
     def on_trade(self, *args):
-        self.on_trade(Trade(get_current_datetime(), args))
+        self._on_trade(Trade(get_current_datetime(), args))
 
     def on_grouporder(self, *args):
-        #print('grouporder', args)
-        pass
+        #print args[0]['grouporder']
+        __marketdepth = MarketDepth(**(args[0]['grouporder']))
+        self._on_marketdepth(__marketdepth)
 
     def on_order(self, *args):
         #print('order', args)
@@ -180,35 +218,45 @@ class BtccWebsocketClient(BaseNamespace):
     def on_error(self, data):
         common.logger.error("Error: %s" % (data))
 
-    def on_trade(self, trade):
-        common.logger.info('websocket on trade')
-        self.__queue.put((BtccWebsocketClient.ON_TRADE, trade))
+    def _on_trade(self, trade):
+        t = Trade(**trade)
+        t.updateDateTime(self.__millisecond_to_add)
+        self.__millisecond_to_add += 1
+        if self.__millisecond_to_add > 999:
+            self.__millisecond_to_add = 1
+        self.__queue.put((BtccWebsocketClient.ON_TRADE, t))
+
+    def _on_marketdepth(self, marketdepth):
+        self.__queue.put((BtccWebsocketClient.ON_MARKETDEPTH, marketdepth))
 
     def on_order_book_update(self, orderBookUpdate):
-        common.logger.info('websocket on_order_book_update')
         self.__queue.put((BtccWebsocketClient.ON_ORDER_BOOK_UPDATE, orderBookUpdate))
 
 
 class WebSocketClientThread(threading.Thread):
     def __init__(self):
+        self.__socketIO = None
+        self.__ws_client = None
+
         super(WebSocketClientThread, self).__init__()
-        self.__ws_client = BtccWebsocketClient(io=SocketIO('websocket.btcc.com', 80))
 
     def get_queue(self):
         return self.__ws_client.get_queue()
 
     def start(self):
-        self.__ws_client.start_listen()
-        print 'start listen'
+        self.__socketIO = SocketIO('websocket.btcc.com', 80)
+        self.__ws_client = self.__socketIO.define(BtccWebsocketClient)
+        #self.__ws_client.emit('subscribe', 'marketdata_cnybtc')
+        self.__ws_client.emit('subscribe', 'grouporder_cnybtc')
         super(WebSocketClientThread, self).start()
 
     def run(self):
         super(WebSocketClientThread, self).run()
-        self.__ws_client.start_client()
+        self.__socketIO.wait()
 
     def stop(self):
         try:
             common.logger.info("Stopping websocket client.")
-            self.__ws_client.stop_client()
+            self.__ws_client.disconnect()
         except Exception, e:
             common.logger.error("Error stopping websocket client: %s." % (str(e)))

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from pyalgotrade import bar
 from pyalgotrade import barfeed
 from pyalgotrade import observer
@@ -136,20 +137,21 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
     def __dispatchImpl(self, eventFilter):
         ret = False
         try:
-            common.logger.info(self.__thread.get_queue().qsize())
             eventType, eventData = self.__thread.get_queue().get(True, LiveTradeFeed.QUEUE_TIMEOUT)
             if eventFilter is not None and eventType not in eventFilter:
                 return False
 
             ret = True
-            if eventType == websocket_client.BtccWebsocket.ON_TRADE:
+            if eventType == websocket_client.BtccWebsocketClient.ON_TRADE:
                 self.__onTrade(eventData)
-            elif eventType == websocket_client.BtccWebsocket.ON_ORDER_BOOK_UPDATE:
+            elif eventType == websocket_client.BtccWebsocketClient.ON_ORDER_BOOK_UPDATE:
                 self.__orderBookUpdateEvent.emit(eventData)
-            elif eventType == websocket_client.BtccWebsocket.ON_CONNECTED:
+            elif eventType == websocket_client.BtccWebsocketClient.ON_CONNECTED:
                 self.__onConnected()
-            elif eventType == websocket_client.BtccWebsocket.ON_DISCONNECTED:
+            elif eventType == websocket_client.BtccWebsocketClient.ON_DISCONNECTED:
                 self.__onDisconnected()
+            elif eventType == websocket_client.BtccWebsocketClient.ON_MARKETDEPTH:
+                self.__onMarketDepth(eventData)
             else:
                 ret = False
                 common.logger.error('Invalid event received to dispatch: %s - %s' % (eventType, eventData))
@@ -178,6 +180,14 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         """
         barDict = {common.CoinSymbol.BTC: TradeBar(self.__getTradeDateTime(trade), trade)}
         self.__barDicts.append(barDict)
+
+    def __onMarketDepth(self, marketdepth):
+        """
+        使用市场深度创建 bar
+        :param marketdepth:
+        :return:
+        """
+        pass
 
     def barsHaveAdjClose(self):
         return False
