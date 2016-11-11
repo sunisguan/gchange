@@ -261,7 +261,7 @@ class WebSocketClientThread(threading.Thread):
 
     def run(self):
         super(WebSocketClientThread, self).run()
-        self.__socketIO.wait(seconds=10)
+        self.__socketIO.wait(seconds=300)
         self.__ws_client.disconnect()
 
     def stop(self):

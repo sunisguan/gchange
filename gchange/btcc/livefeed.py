@@ -92,7 +92,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         self.__prevTradeDateTime = None
         self.__thread = None
         self.__initializationOk = None
-        self.__enableReconnection = True
+        self.__enableReconnection = False
         self.__stopped = False
         self.__orderBookUpdateEvent = observer.Event()
         self.__marketdepth_update_event = observer.Event()

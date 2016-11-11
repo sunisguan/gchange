@@ -5,6 +5,7 @@ from pyalgotrade import strategy
 from pyalgotrade.technical import ma
 from pyalgotrade.technical import cross
 
+import threading
 
 class Strategy(strategy.BaseStrategy):
     def __init__(self, feed, brk):
@@ -80,6 +81,30 @@ class Strategy(strategy.BaseStrategy):
             self.__position.exitLimit(self.__bid)
 
 
+import time
+class _ToStopThread(threading.Thread):
+    def __init__(self, feed):
+        super(_ToStopThread, self).__init__()
+        self.__feed = feed
+        self.__count = 1
+
+    def start(self):
+        super(_ToStopThread, self).start()
+
+    def run(self):
+        super(_ToStopThread, self).run()
+
+        while self.__count < 300:
+            time.sleep(1)
+            self.__count += 1
+        print 'stop feed'
+        self.__feed.stop()
+
+    def stop(self):
+        pass
+
+
+
 def main():
     bar_feed = LiveTradeFeed()
     brk = BacktestingBroker(1000, bar_feed)
@@ -104,6 +129,9 @@ def main():
 
     if plot:
         plt = plotter.StrategyPlotter(strat, True, True, True)
+
+    _thread = _ToStopThread(bar_feed)
+    _thread.start()
 
     strat.run()
     print '-------'
