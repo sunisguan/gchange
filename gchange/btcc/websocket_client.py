@@ -65,6 +65,9 @@ class Trade(object):
         """Returns True if the trade was a sell."""
         return self.__type == 'sell'
 
+    def __str__(self):
+        return 'tid = ', self.__tid, ', price = ', self.__price, ', amount = ', self.__amount, ', date = ', self.__datetime, ', market = ', self.__market, ', type = ', self.__type
+
 class Ticker(object):
     """An order book update event."""
 
@@ -116,6 +119,10 @@ class MarketDepth(object):
             return self.__price
 
     def __init__(self, ask, bid, market):
+        # 只是为了打印方便
+        self.__ask__ = ask
+        self.__bid__ = bid
+
         self.__asks = []
         self.__bids = []
         self.__market = market
@@ -137,6 +144,9 @@ class MarketDepth(object):
         return self.__asks[0]
     def get_top_bid(self):
         return self.__bids[0]
+
+    def __str__(self):
+        return 'asks = ', self.__ask__, ', bids = ', self.__bids
 
 class BtccWebsocketClient(BaseNamespace):
 
@@ -242,9 +252,10 @@ class BtccWebsocketClient(BaseNamespace):
 
 
 class WebSocketClientThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, duration=''):
         self.__socketIO = None
         self.__ws_client = None
+        self.__duration = duration
 
         super(WebSocketClientThread, self).__init__()
 
@@ -260,7 +271,10 @@ class WebSocketClientThread(threading.Thread):
 
     def run(self):
         super(WebSocketClientThread, self).run()
-        self.__socketIO.wait(60*10)
+        if self.__duration != '':
+            self.__socketIO.wait(self.__duration)
+        else:
+            self.__socketIO.wait()
         print '__socketIO.wait(30)'
         self.__ws_client.off('subscribe')
         self.__ws_client.disconnect()

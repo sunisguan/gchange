@@ -85,7 +85,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
 
     QUEUE_TIMEOUT = 0.01
 
-    def __init__(self, maxLen=None):
+    def __init__(self, maxLen=None, duration=''):
         super(LiveTradeFeed, self).__init__(bar.Frequency.TRADE, maxLen)
         self.__barDicts = []
         self.registerInstrument(common.CoinSymbol.BTC)
@@ -97,8 +97,11 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         self.__orderBookUpdateEvent = observer.Event()
         self.__marketdepth_update_event = observer.Event()
 
+        # websocket 持续时间
+        self.__duration = duration
+
     def buildWebSocketClientThread(self):
-        return websocket_client.WebSocketClientThread()
+        return websocket_client.WebSocketClientThread(duration=self.__duration)
 
     def getCurrentDateTime(self):
         return websocket_client.get_current_datetime()

@@ -10,7 +10,7 @@ import threading
 class Strategy(strategy.BaseStrategy):
     def __init__(self, feed, brk):
         strategy.BaseStrategy.__init__(self, feed, brk)
-        smaPeriod = 20
+        smaPeriod = 10
         self.__instrument = "btc"
         self.__prices = feed[self.__instrument].getCloseDataSeries()
         self.__sma = ma.SMA(self.__prices, smaPeriod)
@@ -70,6 +70,10 @@ class Strategy(strategy.BaseStrategy):
         if self.__ask is None:
             return
 
+        #self.info('ask = ', self.__ask)
+
+        #self.info('SMA = ', self.__sma)
+
         # If a position was not opened, check if we should enter a long position.
         if self.__position is None:
             if cross.cross_above(self.__prices, self.__sma) > 0:
@@ -82,6 +86,9 @@ class Strategy(strategy.BaseStrategy):
 
 
 import time
+
+DURATION = 60*10
+
 class _ToStopThread(threading.Thread):
     def __init__(self, feed):
         super(_ToStopThread, self).__init__()
@@ -94,7 +101,7 @@ class _ToStopThread(threading.Thread):
     def run(self):
         super(_ToStopThread, self).run()
 
-        while self.__count < 60*10+10:
+        while self.__count < DURATION + 10:
             time.sleep(1)
             self.__count += 1
         print 'stop feed'
@@ -106,7 +113,7 @@ class _ToStopThread(threading.Thread):
 
 
 def main():
-    bar_feed = LiveTradeFeed()
+    bar_feed = LiveTradeFeed(duration=DURATION)
     brk = BacktestingBroker(1000, bar_feed)
     strat = Strategy(bar_feed, brk)
     plot = True
