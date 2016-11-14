@@ -239,7 +239,7 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         try:
             self.__stopped = True
             if self.__thread is not None and self.__thread.is_alive():
-                common.logger.info('Shutting down websocket client')
+                common.logger.info('livefeed Shutting down websocket client')
                 self.__thread.stop()
         except Exception, e:
             common.logger.error('Error shutting down client: %s' % str(e))

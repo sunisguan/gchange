@@ -200,8 +200,9 @@ class BtccWebsocketClient(BaseNamespace):
         self.__queue.put((BtccWebsocketClient.ON_CONNECTED, None))
 
     def on_disconnect(self):
-        self.__queue.put(BtccWebsocketClient.ON_DISCONNECTED, None)
         print('[Disconnect]')
+        #self.__queue.put(BtccWebsocketClient.ON_DISCONNECTED, None)
+
 
     def on_ticker(self, *args):
         #print('ticker', args)
@@ -211,8 +212,6 @@ class BtccWebsocketClient(BaseNamespace):
         t = Trade(**args[0])
         t.updateDateTime(self.__millisecond_to_add)
         self.__millisecond_to_add += 1
-        #if self.__millisecond_to_add > 999:
-        #   self.__millisecond_to_add = 1
         self.__queue.put((BtccWebsocketClient.ON_TRADE, t))
 
     def on_grouporder(self, *args):
@@ -261,12 +260,13 @@ class WebSocketClientThread(threading.Thread):
 
     def run(self):
         super(WebSocketClientThread, self).run()
-        self.__socketIO.wait(seconds=300)
+        self.__socketIO.wait(60*10)
+        print '__socketIO.wait(30)'
+        self.__ws_client.off('subscribe')
         self.__ws_client.disconnect()
 
     def stop(self):
         try:
-            common.logger.info("Stopping websocket client.")
-            #self.__ws_client.disconnect()
+            common.logger.info("WebSocketClientThread Stopping websocket client.")
         except Exception, e:
             common.logger.error("Error stopping websocket client: %s." % (str(e)))

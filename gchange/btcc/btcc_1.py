@@ -94,7 +94,7 @@ class _ToStopThread(threading.Thread):
     def run(self):
         super(_ToStopThread, self).run()
 
-        while self.__count < 300:
+        while self.__count < 60*10+10:
             time.sleep(1)
             self.__count += 1
         print 'stop feed'
