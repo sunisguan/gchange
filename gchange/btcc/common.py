@@ -11,6 +11,7 @@ class CoinSymbol(object):
     BTC = 'btc'
     LTC = 'ltc'
     CNY = 'cny'
+    COIN_SYMBOLS = [BTC, LTC, CNY]
 
 class BTCTraits(broker.InstrumentTraits):
     def roundQuantity(self, quantity):

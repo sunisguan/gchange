@@ -10,7 +10,11 @@ import threading
 class Strategy(strategy.BaseStrategy):
     def __init__(self, feed, brk):
         strategy.BaseStrategy.__init__(self, feed, brk)
+<<<<<<< Updated upstream
         smaPeriod = 10
+=======
+        smaPeriod = 60
+>>>>>>> Stashed changes
         self.__instrument = "btc"
         self.__prices = feed[self.__instrument].getCloseDataSeries()
         self.__sma = ma.SMA(self.__prices, smaPeriod)

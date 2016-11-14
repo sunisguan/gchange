@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 import threading
 import time
 
 import Queue
 from pyalgotrade import broker
 
-from . import common, btcc_http_client
+import common, btcc_http_client
 
 
 def build_order_from_open_order(openOrder, instrumentTraits):
@@ -100,6 +101,9 @@ class LiveBroker(broker.Broker):
 
         # TODO: 获取用户账户信息
         balance = None
+
+
+
 
         # TODO: 获取用户现金
         self.__cash = None

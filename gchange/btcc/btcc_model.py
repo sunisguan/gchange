@@ -23,7 +23,7 @@ class UserProfile(object):
     def __str__(self):
         return '[Profile]: username = {}, daily_btc_limit = {}, trade_password_enabled = {}, ltc_withdrawal_address = {}, otp_enabled = {}, api_key_permission = {}, daily_ltc_limit = {}, trade_fee_btcltc = {}, trade_fee = {}, id_verify = {}, ltc_deposit_address = {}, trade_fee_cnyltc = {}, btc_withdrawal_address = {}, btc_deposit_address = {}'.format(self.username, self.daily_btc_limit, self.trade_password_enabled, self.ltc_withdrawal_address, self.otp_enabled, self.api_key_permission, self.daily_ltc_limit,self.trade_fee_btcltc, self.trade_fee, self.id_verify, self.ltc_deposit_address, self.trade_fee_cnyltc, self.btc_withdrawal_address, self.btc_deposit_address)
 
-class CurrencyBlock(object):
+class Balance(object):
     def __init__(self, currency, symbol, amount, amount_decimal, amount_integer):
         self.currency = currency
         self.symbol = symbol
