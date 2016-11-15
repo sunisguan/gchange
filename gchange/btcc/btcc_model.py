@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from peewee import *
 
 from gchange.btcc.btcc_model_db import *
@@ -25,14 +26,17 @@ class UserProfile(object):
 
 class Balance(object):
     def __init__(self, currency, symbol, amount, amount_decimal, amount_integer):
-        self.currency = currency
-        self.symbol = symbol
-        self.amount = amount
-        self.amount_decimal = amount_decimal
-        self.amount_integer = amount_integer
+        self.__currency = currency
+        self.__symbol = symbol
+        self.__amount = amount
+        self.__amount_decimal = amount_decimal
+        self.__amount_integer = amount_integer
+
+    def get_amount(self):
+        return self.__amount
 
     def __str__(self):
-        return 'currency = {}, symbol = {}, amount = {}, amount_decimal = {}, amount_integer = {}'.format(self.currency, self.symbol, self.amount, self.amount_decimal, self.amount_decimal)
+        return 'currency = {}, symbol = {}, amount = {}, amount_decimal = {}, amount_integer = {}'.format(self.__currency, self.__symbol, self.__amount, self.__amount_decimal, self.__amount_decimal)
 
 class AccountInfo(object):
     def __init__(self, userjson = None):
@@ -124,16 +128,25 @@ class MarketDepth(object):
             self._data = json_data['date']
 
 class Order(object):
-    def __init__(self, id, status, price, amount_original, currency, amount, avg_price, date, type):
-        self.order_id = id
-        self.status = status
-        self.price = price
-        self.amount_original = amount_original
-        self.currency = currency
-        self.amount = amount
-        self.avg_price = avg_price
-        self.date = date
-        self.type = type
+    def __init__(self, id, status = None, price = None, amount_original = None, currency = None, amount = None, avg_price = None, date = None, type = None):
+        self.__order_id = id
+        self.__status = status
+        self.__price = price
+        self.__amount_original = amount_original
+        self.__currency = currency
+        self.__amount = amount
+        self.__avg_price = avg_price
+        self.__date = date
+        self.__type = type
+
+    def empty(self):
+        return self.status is None
+
+    def get_id(self):
+        return self.__order_id
+
+    def get_datetime(self):
+        return self.__date
 
 
 class Deposit(object):
@@ -148,14 +161,42 @@ class Deposit(object):
         self.deposit_id = deposit_id
 
 class Transaction(object):
-    def __init__(self, ltc_amount, btc_amount, cny_amount, market, date, type, trans_id):
-        self.ltc_amount = ltc_amount
-        self.btc_amount = btc_amount
-        self.cny_amount = cny_amount
-        self.market = market
-        self.date = date
-        self.type = type
-        self.trans_id = trans_id
+    def __init__(self, ltc_amount, btc_amount, cny_amount, market, date, type, id):
+        """
+        交易记录
+        :param ltc_amount: LTC 交易量
+        :param btc_amount: BTC 交易量
+        :param cny_amount: CNY 变化量
+        :param market: btcc_http_client.MarketParams
+        :param date: 交易时间
+        :param type: common.TransactionType
+        :param trans_id: 交易号
+        """
+        self.__ltc_amount = ltc_amount
+        self.__btc_amount = btc_amount
+        self.__cny_amount = cny_amount
+        self.__market = market
+        self.__date = date
+        self.__type = type
+        self.__trans_id = id
+
+    def get_btc_amount(self):
+        return abs(self.__btc_amount)
+
+    def get_datetime(self):
+        return self.__date
+
+    def get_cny_amount(self):
+        return abs(self.__cny_amount)
+
+    def get_btc_price(self):
+        return abs(round(self.__cny_amount % self.__btc_amount, 2))
+
+    def get_fee(self):
+        return 0
+
+    def get_id(self):
+        return self.__trans_id
 
 class Ticker(object):
     def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):

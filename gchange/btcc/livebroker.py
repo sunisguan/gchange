@@ -5,7 +5,7 @@ import time
 import Queue
 from pyalgotrade import broker
 
-import common, btcc_http_client
+import common, btcc_exchange
 
 
 def build_order_from_open_order(openOrder, instrumentTraits):
@@ -22,22 +22,37 @@ def build_order_from_open_order(openOrder, instrumentTraits):
 
 
 class TradeMonitor(threading.Thread):
-    POLL_FREQUENCY = 2
+    POLL_FREQUENCY = 1
 
     # Events
     ON_USER_TRADE = 1
 
-    def __init__(self, httpClient):
+    def __init__(self, exchange):
         super(TradeMonitor, self).__init__()
         self.__lastTradeId = -1
-        self.__httpClient = httpClient
+        self.__exchange = exchange
         self.__queue = Queue.Queue()
         self.__stop = False
 
     def _getNewTrades(self):
-        # TODO: 获取用户最新交易
-        userTrades = self.__httpClient.get_transactions()
-        return 0
+        """
+        获取用户最新交易
+        :return:
+        """
+        userTrades = self.__exchange.get_transactions()
+
+        # Get the new trades only.
+        ret = []
+        for userTrade in userTrades:
+            if userTrade.get_id() > self.__lastTradeId:
+                ret.append(userTrade)
+            else:
+                break
+        # Older trades first.
+        ret.reverse()
+        return ret
+
+        return userTrades
 
     def getQueue(self):
         return self.__queue
@@ -45,7 +60,7 @@ class TradeMonitor(threading.Thread):
     def start(self):
         trades = self._getNewTrades()
         if len(trades):
-            self.__lastTradeId = trades[-1].getId()
+            self.__lastTradeId = trades[-1].get_id()
             common.logger.info('Last trade found: %d' % self.__lastTradeId)
         super(TradeMonitor, self).start()
 
@@ -70,14 +85,14 @@ class TradeMonitor(threading.Thread):
 class LiveBroker(broker.Broker):
     QUEUE_TIMEOUT = 0.01
 
-    def __init__(self, serviceId, key, secret):
+    def __init__(self):
         super(LiveBroker, self).__init__()
         self.__stop = False
-        self.__btcService = self.buildBtccService(serviceId, key, secret)
-        self.__tradeMonitor = TradeMonitor(self.__btcService)
         self.__cash = 0
         self.__shares = {}
         self.__activeOrders = {}
+        self.__exchange = btcc_exchange.BtccExchange()
+        self.__tradeMonitor = TradeMonitor(self.__exchange)
 
     def _registerOrder(self, order):
         assert(order.getId() not in self.__activeOrders)
@@ -89,29 +104,23 @@ class LiveBroker(broker.Broker):
         assert(order.getId() is not None)
         del self.__activeOrders[order.getId()]
 
-    def buildBtccService(self, _id, key, secret):
-        # TODO: 新建链接类
-        pass
-
     def refreshAccountBalance(self):
-        # 刷新用户账户
-
+        """
+        刷新用户账户信息
+        :return:
+        """
         # 防止获取中发生错误
         self.__stop = True
 
-        # TODO: 获取用户账户信息
-        balance = None
+        # 获取用户现金
+        self.__cash = self.__exchange.get_cash()
+        common.logger.info('Avaliable Cash = %s' % self.__cash)
 
-
-
-
-        # TODO: 获取用户现金
-        self.__cash = None
-
-        # TODO: 获取用户可用的BTC
-        btc = None
+        # 获取用户可用的BTC
+        btc = self.__exchange.get_avaliable_btc()
         if btc:
             self.__shares = {common.CoinSymbol.BTC: btc}
+            common.logger.info('Avaliable BTC = %s' % btc)
         else:
             self.__shares = {}
 
@@ -123,7 +132,7 @@ class LiveBroker(broker.Broker):
         self.__stop = True
 
         # TODO: 获取Open Orders
-        openOrders = None
+        openOrders = self.__exchange.get_orders()
 
         for openOrder in openOrders:
             self._registerOrder(build_order_from_open_order(openOrder, self.getInstrumentTraits(common.CoinSymbol.BTC)))
@@ -142,18 +151,17 @@ class LiveBroker(broker.Broker):
         for trade in trades:
             order = self.__activeOrders.get(trade.getOrderId())
             if order is not None:
-                fee = trade.getFee()
-                # TODO: 获取成交价
-                fillPrice = trade.getBTCCNY()
-                # TODO: 获取成交量
-                btcAmount = trade.getBTC()
-                # TODO: 获取交易时间
-                dateTime = trade.getDateTime()
+                fee = trade.get_fee()
+                # 获取成交价
+                fillPrice = trade.get_btc_price()
+                # 获取成交量
+                btcAmount = trade.get_btc_amount()
+                # 获取交易时间
+                dateTime = trade.get_datetime()
 
-                # TODO: 更新账户情况
                 self.refreshAccountBalance()
 
-                # TODO: 更新Order
+                # 更新Order
                 orderExecutionInfo = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
                 order.addExecutionInfo(orderExecutionInfo)
                 if not order.isActive():
@@ -233,13 +241,21 @@ class LiveBroker(broker.Broker):
             order.setGoodTillCanceled(True)
 
             if order.isBuy():
-                # TODO: 提交买单
-                btccOrder = None
+                if order.getType() == broker.Order.Type.MARKET:
+                    btccOrder = self.__exchange.buy(amount=order.getQuantity())
+                elif order.getType() == broker.Order.Type.LIMIT:
+                    btccOrder = self.__exchange.buy(amount=order.getQuantity(), price=order.getLimitPrice())
+                else:
+                    raise Exception('仅支持 市价/限价 交易')
             else:
-                # TODO: 提交卖单
-                btccOrder = None
+                if order.getType() == broker.Order.Type.MARKET:
+                    btccOrder = self.__exchange.sell(amount=order.getQuantity())
+                elif order.getType() == broker.Order.Type.LIMIT:
+                    btccOrder = self.__exchange.sell(amount=order.getQuantity(), price=order.getLimitPrice())
+                else:
+                    raise Exception('仅支持 市价/限价 交易')
 
-            order.setSubmitted(btccOrder.getId(), btccOrder.getDateTime())
+            order.setSubmitted(btccOrder.get_id(), btccOrder.get_datetime())
             self._registerOrder(order)
             # Switch from INITIAL -> SUBMITTED
             # IMPORTANT: Do not emit an event for this switch because when using the position interface
@@ -249,8 +265,18 @@ class LiveBroker(broker.Broker):
             raise Exception('The order was already processed')
 
     def createMarketOrder(self, action, instrument, quantity, onClose=False):
-        # TODO: create market order
-        pass
+        if instrument != common.CoinSymbol.BTC:
+            raise Exception('仅支持 BTC 交易')
+
+        if action == broker.Order.Action.BUY_TO_COVER:
+            action = broker.Order.Action.BUY
+        elif action == broker.Order.Action.SELL_SHORT:
+            action = broker.Order.Action.SELL
+
+        if action not in [broker.Order.Action.BUY, broker.Order.Action.SELL]:
+            raise Exception('仅支持 买/卖 交易')
+
+        return broker.MarketOrder(action, instrument, quantity, False, common.BTCTraits())
 
     def createLimitOrder(self, action, instrument, limitPrice, quantity):
         if instrument != common.CoinSymbol.BTC:
@@ -264,10 +290,8 @@ class LiveBroker(broker.Broker):
         if action not in [broker.Order.Action.BUY, broker.Order.Action.SELL]:
             raise Exception('仅支持 买/卖 交易')
 
-        instrumentTraits = self.getInstrumentTraits(instrument)
         limitPrice = round(limitPrice, 2)
-        quantity = instrumentTraits.roundQuantity(quantity)
-        return broker.LimitOrder(action, instrument, limitPrice, quantity, instrumentTraits)
+        return broker.LimitOrder(action, instrument, limitPrice, quantity, common.BTCTraits())
 
     def createStopOrder(self, action, instrument, stopPrice, quantity):
         raise Exception('Stop orders are not supported')
@@ -282,8 +306,7 @@ class LiveBroker(broker.Broker):
         if activeOrder.isFilled():
             raise Exception('Can not cancel order that has already been filled')
 
-        # TODO: BTCCService cancel order
-        self.__btcService = None
+        self.__exchange.cancel(order_id=order.getId())
         self._unregisterOrder(order)
         order.switchState(broker.Order.State.CANCELED)
 

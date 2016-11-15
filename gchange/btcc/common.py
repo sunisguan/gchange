@@ -13,6 +13,27 @@ class CoinSymbol(object):
     CNY = 'cny'
     COIN_SYMBOLS = [BTC, LTC, CNY]
 
+class OrderType(object):
+    BID = 'bid'
+    ASK = 'ask'
+
+class OrderStatus(object):
+    OPEN = 'open'
+    CANCELED = 'cancelled'
+
+class TransactionType(object):
+    ALL = 'all'
+
+    FUND_BTC = 'fundbtc'
+    WITHDRAW_BTC = 'withdrawbtc'
+    WITHDRAW_BTC_FEE = 'withdrawbtcfee'
+    REFUND_BTC = 'refundbtc'
+
+    BUY_BTC = 'buybtc'
+    SELL_BTC = 'sellbtc'
+    TRADE_FEE = 'tradefee'
+
+
 class BTCTraits(broker.InstrumentTraits):
     def roundQuantity(self, quantity):
         return round(quantity, 8)

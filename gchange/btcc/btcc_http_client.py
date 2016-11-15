@@ -153,7 +153,7 @@ class BtccHttpClient(object):
         :param price: 买 1 比特币/莱特币所用人民币的价格，最多支持小数点后2位精度。若以市价单交易，将 price 设置为 null
         :param amount: 要买的比特币或者莱特币数量, BTC最多支持小数点后 4 位精度, 但最小买卖额度为0.001，LTC最多支持小数点后 3 位精度
         :param market: 可使用[BTCCNY],[LTCCNY],[LTCBTC] 默认值为BTCCNY
-        :return order id
+        :return order id, {"result":12345,"id":"1"}
         """
         if amount <= 0.0:
             print('买入量必须大于0')
@@ -279,6 +279,14 @@ class BtccHttpClient(object):
         post_data['params']=[currency, pending]
         return self._request(post_data)
 
+    def get_order(self, order_id):
+        """
+        获取一个挂单状态
+        :param order_id: 挂单 ID
+        :return: btcc_model.Order
+        """
+        return self.get_orders(order_id=order_id)
+
     def get_orders(self, order_id = None, limit = None, offset = 0, with_detail=False, since = None, open_only = True,
                    market = MarketParams.BTC_CNY):
         """
@@ -290,7 +298,7 @@ class BtccHttpClient(object):
         :param since: 限制返回交易记录的起始时间.
         :param open_only: 默认为“true”。如果为“true”，仅返回还未完全成交的挂单。
         :param market: 可选值BTCCNY、LTCCNY、LTCBTC、ALL 默认值为BTCCNY
-        :return:
+        :return: btcc_model.Order List
         """
         print('[{} start...]'.format(self.get_orders.__name__))
         post_data = {}
