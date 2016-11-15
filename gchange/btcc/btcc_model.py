@@ -198,6 +198,9 @@ class Transaction(object):
     def get_id(self):
         return self.__trans_id
 
+    def get_type(self):
+        return self.__type
+
 class Ticker(object):
     def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):
         # 近24小时内最高价格

@@ -39,7 +39,17 @@ class TradeMonitor(threading.Thread):
         获取用户最新交易
         :return:
         """
-        userTrades = self.__exchange.get_transactions()
+        since = self.__lastTradeId if self.__lastTradeId != -1 else None
+        userTrades = self.__exchange.get_transactions(since=since)
+
+        # 只抽取 buybtc和sellbtc交易，并且排序
+        # ut.sort(key=lambda x: x.count, reverse=True)
+        trans_remove = []
+        for trans in userTrades:
+            if trans.get_type() not in (common.TransactionType.BUY_BTC, common.TransactionType.SELL_BTC):
+                trans_remove.append(trans)
+        userTrades = list(set(userTrades) - set(trans_remove))
+        userTrades.sort(key=lambda  x: x.get_id(), reverse=True)
 
         # Get the new trades only.
         ret = []
@@ -48,7 +58,7 @@ class TradeMonitor(threading.Thread):
                 ret.append(userTrade)
             else:
                 break
-        # Older trades first.
+        # Older trades first.reverse
         ret.reverse()
         return ret
 
@@ -79,8 +89,6 @@ class TradeMonitor(threading.Thread):
 
     def stop(self):
         self.__stop = True
-
-
 
 class LiveBroker(broker.Broker):
     QUEUE_TIMEOUT = 0.01

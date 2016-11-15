@@ -127,10 +127,10 @@ class BtccExchange(object):
         """
         获取交易记录，从 since 开始后的10条交易记录
         :param trans_type: common.TransactionType
-        :param since: 时间戳
+        :param since: transaction id
         :return:
         """
-        resp, status = self.__hc.get_transactions(trans_type=trans_type, since=since)
+        resp, status = self.__hc.get_transactions(trans_type=trans_type, since=since, sincetype='id')
         if status:
             if len(resp):
                 return [bm.Transaction(**trans) for trans in resp['transaction']]

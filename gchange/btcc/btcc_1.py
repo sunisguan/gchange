@@ -98,14 +98,22 @@ class _ToStopThread(threading.Thread):
     def stop(self):
         pass
 
+def __do_live():
+    bar_feed = LiveTradeFeed(duration=DURATION)
+    brk = livebroker.LiveBroker()
+    strat = Strategy(bar_feed, brk)
 
+    _thread = _ToStopThread(bar_feed)
+    _thread.start()
 
-def main():
+    strat.run()
+    print '-------'
+
+def  __do_backtesting():
     bar_feed = LiveTradeFeed(duration=DURATION)
     brk = BacktestingBroker(1000, bar_feed)
-    #brk = livebroker.LiveBroker()
     strat = Strategy(bar_feed, brk)
-    plot = False
+    plot = True
 
     ############################################# don't change ############################
     from pyalgotrade.stratanalyzer import returns
@@ -114,7 +122,7 @@ def main():
     from pyalgotrade.stratanalyzer import trades
     from pyalgotrade import plotter
 
-    """
+
     retAnalyzer = returns.Returns()
     strat.attachAnalyzer(retAnalyzer)
     sharpeRatioAnalyzer = sharpe.SharpeRatio()
@@ -123,7 +131,7 @@ def main():
     strat.attachAnalyzer(drawDownAnalyzer)
     tradesAnalyzer = trades.Trades()
     strat.attachAnalyzer(tradesAnalyzer)
-    """
+
     if plot:
         plt = plotter.StrategyPlotter(strat, True, True, True)
 
@@ -145,6 +153,11 @@ def main():
         return_list = []
         for item in retAnalyzer.getCumulativeReturns():
             return_list.append(item)
+
+
+def main():
+    __do_live()
+    #__do_backtesting()
 
 if __name__ == "__main__":
     main()
