@@ -148,6 +148,12 @@ class Order(object):
     def get_datetime(self):
         return self.__date
 
+    def get_price(self):
+        return self.__price
+
+    def get_amount(self):
+        return self.__amount
+
 
 class Deposit(object):
     DEPOSIT_STATUS_PENDING = 'pending'

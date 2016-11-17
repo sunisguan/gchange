@@ -58,7 +58,7 @@ class Strategy(strategy.BaseStrategy):
         if self.__ask is None:
             return
 
-        # If a position was not opened, check if we should enter a long position.
+        # If a position was not opened, check if we should enter a ƒlong position.
         """"""
         if self.__position is None:
             self.info("Entry signal. Buy at %s" % (self.__ask))
