@@ -58,9 +58,9 @@ class BtccExchange(object):
         if status:
             # 买单报单成功, 获取挂单状态，初始化order
             order_id = resp
-            resp, status = self.__hc.get_order(order_id=resp)
+            resp, status = self.__hc.get_order(order_id=order_id)
             if status:
-                return bm.Order(**resp)
+                return bm.Order(**resp['order'])
             else:
                 return bm.Order(id=order_id)
         else:
@@ -89,7 +89,7 @@ class BtccExchange(object):
             order_id = resp
             resp, status = self.__hc.get_order(order_id=resp)
             if status:
-                return bm.Order(**resp)
+                return bm.Order(**resp['order'])
             else:
                 return bm.Order(id=order_id)
         else:
@@ -119,6 +119,7 @@ class BtccExchange(object):
     def get_orders(self, market=bhc.BtccHttpClient.MarketParams.BTC_CNY):
         resp, status = self.__hc.get_orders(market=market)
         if status:
+            print 'get_orders, order = ', resp['order']
             return [bm.Order(**order) for order in resp['order']]
         else:
             raise Exception('获取订单信息失败')

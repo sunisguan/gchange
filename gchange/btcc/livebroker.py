@@ -17,7 +17,7 @@ def build_order_from_open_order(openOrder, instrumentTraits):
         raise Exception("Invalid order type")
 
     ret = broker.LimitOrder(action, common.CoinSymbol.BTC, openOrder.getPrice(), openOrder.getAmount(), instrumentTraits)
-    ret.setSubmitted(openOrder.getId(), openOrder.getDateTime())
+    ret.setSubmitted(openOrder.get_id(), openOrder.getDateTime())
     ret.setState(broker.Order.State.ACCEPTED)
 
 
@@ -62,8 +62,6 @@ class TradeMonitor(threading.Thread):
         ret.reverse()
         return ret
 
-        return userTrades
-
     def getQueue(self):
         return self.__queue
 
@@ -79,7 +77,7 @@ class TradeMonitor(threading.Thread):
             try:
                 trades = self._getNewTrades()
                 if len(trades):
-                    self.__lastTradeId = trades[-1].getId()
+                    self.__lastTradeId = trades[-1].get_id()
                     common.logger.info('%d new trade/s found' % len(trades))
                     self.__queue.put((TradeMonitor.ON_USER_TRADE, trades))
             except Exception, e:
@@ -139,7 +137,8 @@ class LiveBroker(broker.Broker):
         # 防止获取中发生错误
         self.__stop = True
 
-        # TODO: 获取Open Orders
+        common.logger.info('start refresh open orders')
+
         openOrders = self.__exchange.get_orders()
 
         for openOrder in openOrders:
@@ -181,7 +180,7 @@ class LiveBroker(broker.Broker):
                     eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
                 self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
             else:
-                common.logger.info('Trade %d refered to order %d that is not active' % (trade.getId(), trade.getOrderId()))
+                common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), trade.getOrderId()))
 
     # BEGIN observer.Subject interface
     def start(self):
@@ -248,6 +247,8 @@ class LiveBroker(broker.Broker):
             order.setAllOrNone(False)
             order.setGoodTillCanceled(True)
 
+            btccOcder = None
+
             if order.isBuy():
                 if order.getType() == broker.Order.Type.MARKET:
                     btccOrder = self.__exchange.buy(amount=order.getQuantity())
@@ -262,6 +263,8 @@ class LiveBroker(broker.Broker):
                     btccOrder = self.__exchange.sell(amount=order.getQuantity(), price=order.getLimitPrice())
                 else:
                     raise Exception('仅支持 市价/限价 交易')
+
+            common.logger.info('Buy completed order = %s' % btccOrder)
 
             order.setSubmitted(btccOrder.get_id(), btccOrder.get_datetime())
             self._registerOrder(order)
@@ -308,13 +311,13 @@ class LiveBroker(broker.Broker):
         raise Exception('Stop limit orders are not supported')
 
     def cancelOrder(self, order):
-        activeOrder = self.__activeOrders.get(order.getId())
+        activeOrder = self.__activeOrders.get(order.get_id())
         if activeOrder is None:
             raise Exception('The order is not active anymore')
         if activeOrder.isFilled():
             raise Exception('Can not cancel order that has already been filled')
 
-        self.__exchange.cancel(order_id=order.getId())
+        self.__exchange.cancel(order_id=order.get_id())
         self._unregisterOrder(order)
         order.switchState(broker.Order.State.CANCELED)
 

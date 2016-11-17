@@ -8,7 +8,7 @@ from . import common
 
 class BacktestingBroker(backtesting.Broker):
     # 最小交易金额
-    MIN_TRADE_CNY = 10
+    MIN_TRADE_CNY = 1
 
     """
     btcc backtesting broker

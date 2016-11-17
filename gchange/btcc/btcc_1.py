@@ -58,15 +58,16 @@ class Strategy(strategy.BaseStrategy):
         if self.__ask is None:
             return
 
-        self.info('ask = ', self.__ask)
-
-        self.info('SMA = ', self.__sma)
-
         # If a position was not opened, check if we should enter a long position.
+        """"""
         if self.__position is None:
+            self.info("Entry signal. Buy at %s" % (self.__ask))
+            self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
+            """
             if cross.cross_above(self.__prices, self.__sma) > 0:
                 self.info("Entry signal. Buy at %s" % (self.__ask))
                 self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
+            """
         # Check if we have to close the position.
         elif not self.__position.exitActive() and cross.cross_below(self.__prices, self.__sma) > 0:
             self.info("Exit signal. Sell at %s" % (self.__bid))
