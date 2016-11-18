@@ -20,6 +20,7 @@ class OrderType(object):
 class OrderStatus(object):
     OPEN = 'open'
     CANCELED = 'cancelled'
+    CLOSED = 'closed'
 
 class TransactionType(object):
     ALL = 'all'

@@ -9,9 +9,9 @@ import common, btcc_exchange
 
 
 def build_order_from_open_order(openOrder, instrumentTraits):
-    if openOrder.isBuy():
+    if openOrder.is_buy():
         action = broker.Order.Action.BUY
-    elif openOrder.isSell():
+    elif openOrder.is_sell():
         action = broker.Order.Action.SELL
     else:
         raise Exception("Invalid order type")
@@ -20,6 +20,7 @@ def build_order_from_open_order(openOrder, instrumentTraits):
     ret.setSubmitted(openOrder.get_id(), openOrder.get_datetime())
     ret.setState(broker.Order.State.ACCEPTED)
 
+    return ret
 
 class TradeMonitor(threading.Thread):
     POLL_FREQUENCY = 1
@@ -40,16 +41,21 @@ class TradeMonitor(threading.Thread):
         :return:
         """
         since = self.__lastTradeId if self.__lastTradeId != -1 else None
-        userTrades = self.__exchange.get_transactions(since=since)
+        #userTrades = self.__exchange.get_transactions(since=since)
+        userTrades = self.__exchange.get_orders()
+
+        common.logger.info('_getNewTrades %s' % userTrades)
 
         # 只抽取 buybtc和sellbtc交易，并且排序
         # ut.sort(key=lambda x: x.count, reverse=True)
+        """
         trans_remove = []
         for trans in userTrades:
             if trans.get_type() not in (common.TransactionType.BUY_BTC, common.TransactionType.SELL_BTC):
                 trans_remove.append(trans)
         userTrades = list(set(userTrades) - set(trans_remove))
         userTrades.sort(key=lambda  x: x.get_id(), reverse=True)
+        """
 
         # Get the new trades only.
         ret = []
@@ -180,7 +186,7 @@ class LiveBroker(broker.Broker):
                     eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
                 self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
             else:
-                common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), trade.get_id()))
+                common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), order.getId()))
 
     # BEGIN observer.Subject interface
     def start(self):
@@ -270,6 +276,9 @@ class LiveBroker(broker.Broker):
             # IMPORTANT: Do not emit an event for this switch because when using the position interface
             # the order is not yet mapped to the position and Position.onOrderUpdated will get called.
             order.switchState(broker.Order.State.SUBMITTED)
+
+            # 按市价提交的订单，立即成交
+
         else:
             raise Exception('The order was already processed')
 

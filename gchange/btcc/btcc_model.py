@@ -2,6 +2,7 @@
 from peewee import *
 
 from gchange.btcc.btcc_model_db import *
+import common
 
 
 class UserProfile(object):
@@ -128,7 +129,14 @@ class MarketDepth(object):
             self._data = json_data['date']
 
 class Order(object):
-    def __init__(self, id, status = None, price = None, amount_original = None, currency = None, amount = None, avg_price = None, date = None, type = None):
+
+    class SubOrder(object):
+        def __init__(self, amount, price, dateline):
+            self.__amount = amount
+            self.__price = price
+            self.__dateline = dateline
+
+    def __init__(self, id, status=None, price=None, amount_original=None, currency=None, amount=None, avg_price=None, date=None, type=None):
         self.__order_id = id
         self.__status = status
         self.__price = price
@@ -138,6 +146,8 @@ class Order(object):
         self.__avg_price = avg_price
         self.__date = date
         self.__type = type
+
+        self.__sub_orders = []
 
     def empty(self):
         return self.status is None
@@ -154,6 +164,46 @@ class Order(object):
     def get_amount(self):
         return self.__amount
 
+    def is_market_order(self):
+        return self.__price == 0.0
+
+    def is_limit_order(self):
+        return not self.is_market_order()
+
+    def get_status(self):
+        return self.__status
+
+    def get_currency(self):
+        return self.__currency
+
+    def get_type(self):
+        return self.__type
+
+    def get_sub_orders(self):
+        return self.__sub_orders
+
+    def get_avg_price(self):
+        return self.__avg_price
+
+    def set_sub_orders(self, sub_orders):
+        # 市价订单被拆分成不同价格成交
+        if len(sub_orders):
+            self.__sub_orders = []
+            self.__sub_orders.append(Order.SubOrder(**order) for order in sub_orders)
+
+    def is_filled(self):
+        # 是否成交
+        return self.__status == common.OrderStatus.CLOSED and self.__type == common.OrderType.BID
+
+    def is_canceled(self):
+        # 是否取消
+        return self.__status == common.OrderStatus.CANCELED
+
+    def is_buy(self):
+        return self.__type == common.OrderType.BID
+
+    def is_sell(self):
+        return self.__type == common.OrderType.ASK
 
 class Deposit(object):
     DEPOSIT_STATUS_PENDING = 'pending'

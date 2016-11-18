@@ -116,10 +116,9 @@ class BtccExchange(object):
         # TODO:
         pass
 
-    def get_orders(self, market=bhc.BtccHttpClient.MarketParams.BTC_CNY):
-        resp, status = self.__hc.get_orders(market=market)
+    def get_orders(self, market=bhc.BtccHttpClient.MarketParams.BTC_CNY, open_only=False):
+        resp, status = self.__hc.get_orders(market=market, open_only=open_only)
         if status:
-            print 'get_orders, order = ', resp['order']
             return [bm.Order(**order) for order in resp['order']]
         else:
             raise Exception('获取订单信息失败')
