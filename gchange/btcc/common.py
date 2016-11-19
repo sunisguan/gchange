@@ -38,4 +38,4 @@ class TransactionType(object):
 
 class BTCTraits(broker.InstrumentTraits):
     def roundQuantity(self, quantity):
-        return round(quantity, 8)
+        return round(quantity, 4)

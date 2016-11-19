@@ -1,4 +1,34 @@
 {
+    "order":
+        {
+            "status": "closed",
+            "price": "0.00",
+            "amount_original": "0.01900000",
+            "currency": "CNY",
+            "amount": "0.00000000",
+            "details":
+                [
+                    {
+                        "amount": 0.004,
+                        "dateline": "1479457175",
+                        "price": "5285.00"
+                    },
+                    {
+                        "amount": 0.015,
+                        "dateline": "1479457175",
+                        "price": "5284.17"
+                    }
+                ],
+            "avg_price": "5284.34",
+            "date": 1479457174,
+            "type": "ask",
+            "id": 913847601
+        }
+}
+
+
+
+{
     "date": 1476264671,
     "order": [
         {

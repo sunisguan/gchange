@@ -10,18 +10,24 @@ import threading
 class Strategy(strategy.BaseStrategy):
 
     """
-    单均线策略
+    双均线策略
     """
-    def __init__(self, feed, brk):
+
+    def __init__(self, feed, brk, n, m):
         strategy.BaseStrategy.__init__(self, feed, brk)
-        smaPeriod = 60
-        self.__instrument = "btc"
-        self.__prices = feed[self.__instrument].getCloseDataSeries()
-        self.__sma = ma.SMA(self.__prices, smaPeriod)
+        self.__instrument = 'btc'
+
         self.__bid = None
         self.__ask = None
-        self.__position = None
         self.__posSize = 0.001
+
+        self.__position = None
+        self.__prices = feed[self.__instrument].getPriceDataSeries()
+        self.__malength1 = int(n)
+        self.__malength2 = int(m)
+
+        self.__ma1 = ma.SMA(self.__prices, self.__malength1)
+        self.__ma2 = ma.SMA(self.__prices, self.__malength2)
 
         # Subscribe to order book update events to get bid/ask prices to trade.
         feed.get_marketdepth_update_event().subscribe(self.__onMarketdepth_update)
@@ -48,23 +54,25 @@ class Strategy(strategy.BaseStrategy):
 
     def onExitCanceled(self, position):
         # If the exit was canceled, re-submit it.
-        self.__position.exitLimit(self.__bid)
+        self.info('on exit canceled')
+        #self.__position.exitLimit(self.__bid)
 
     def onFinish(self, bars):
         print 'finish'
 
     def enterSignal(self):
-        return self.__position is None and cross.cross_above(self.__prices, self.__sma) > 0
+        return self.__position is None and cross.cross_above(self.__ma1, self.__ma2) > 0
 
     def exitSignal(self):
-        ret = self.__position is not None and not self.__position.exitActive() and cross.cross_below(self.__prices, self.__sma) > 0
+        ret = self.__position is not None and not self.__position.exitActive() and cross.cross_below(self.__ma1, self.__ma2) > 0
         return ret
 
     def onBars(self, bars):
         bar = bars[self.__instrument]
         #self.info("Price: %s. Volume: %s." % (bar.getClose(), bar.getVolume()))
 
-        if self.__ask is None:
+        # Wait until we get the current bid/ask prices.
+        if self.__ask is None or self.__ma2[-1] is None:
             return
 
         if self.exitSignal():
@@ -78,7 +86,8 @@ class Strategy(strategy.BaseStrategy):
 
 import time
 
-DURATION = 60*10
+DURATION = 60*60
+paras = [10, 30]
 
 class _ToStopThread(threading.Thread):
     def __init__(self, feed):
@@ -104,7 +113,7 @@ class _ToStopThread(threading.Thread):
 def __do_live():
     bar_feed = LiveTradeFeed(duration=DURATION)
     brk = livebroker.LiveBroker()
-    strat = Strategy(bar_feed, brk)
+    strat = Strategy(bar_feed, brk, *paras)
 
     _thread = _ToStopThread(bar_feed)
     _thread.start()

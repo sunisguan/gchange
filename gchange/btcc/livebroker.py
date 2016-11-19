@@ -54,6 +54,7 @@ class TradeMonitor(threading.Thread):
 
         # Get the new trades only.
         ret = []
+        common.logger.info('last trade id = %s' % self.__lastTradeId)
         for userTrade in userTrades:
             if userTrade.get_id() > self.__lastTradeId:
                 ret.append(userTrade)
@@ -61,6 +62,7 @@ class TradeMonitor(threading.Thread):
                 break
         # Older trades first.reverse
         ret.reverse()
+        common.logger.info('ret len = %s' % len(ret))
         return ret
 
     def getQueue(self):
@@ -169,6 +171,7 @@ class LiveBroker(broker.Broker):
 
             # 更新Order
             orderExecutionInfo = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
+            common.logger.info('>>>>>>>> id = %s' % trade.get_id())
             order.addExecutionInfo(orderExecutionInfo)
             if not order.isActive():
                 self._unregisterOrder(order)
@@ -210,6 +213,7 @@ class LiveBroker(broker.Broker):
         # Switch orders from SUBMITTED to ACCEPTED
         ordersToProcess = self.__activeOrders.values()
         for order in ordersToProcess:
+            #common.logger.info('order id = %s' % order.getId())
             if order.isSubmitted():
                 order.switchState(broker.Order.State.ACCEPTED)
                 self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.ACCEPTED, None))
@@ -324,13 +328,12 @@ class LiveBroker(broker.Broker):
 
         ret = self.__exchange.cancel(order_id=__id)
 
-        # 更新账户
-        self.refreshAccountBalance()
-
         if ret:
             # 取消成功
             self._unregisterOrder(order)
             order.switchState(broker.Order.State.CANCELED)
+            # 更新账户
+            self.refreshAccountBalance()
 
             # 发通知，这个订单被取消
             self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.CANCELED, "用户主动取消"))
