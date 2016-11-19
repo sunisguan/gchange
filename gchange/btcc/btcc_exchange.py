@@ -107,10 +107,9 @@ class BtccExchange(object):
         :return: True 取消成功
         """
         resp, status = self.__hc.cancel(order_id=order_id, market=market)
-        if status:
-            return resp
-        else:
-            raise Exception('取消挂单失败')
+        if not status:
+            common.logger.info('取消挂单失败')
+        return status
 
     def cancel_stop(self):
         # TODO:
@@ -122,6 +121,13 @@ class BtccExchange(object):
             return [bm.Order(**order) for order in resp['order']]
         else:
             raise Exception('获取订单信息失败')
+
+    def get_order(self, order_id):
+        resp, status = self.__hc.get_order(order_id=order_id)
+        if status:
+            return bm.Order(**resp['order'])
+        else:
+            return bm.Order(id=order_id)
 
     def get_transactions(self, trans_type=common.TransactionType.ALL, since=None):
         """

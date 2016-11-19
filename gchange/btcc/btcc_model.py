@@ -149,6 +149,12 @@ class Order(object):
 
         self.__sub_orders = []
 
+    def __str__(self):
+        str = "order id = {}, status = {}, price = {}".format(self.__order_id, self.__status, self.__price)
+        str += ", amount_original = {}, currency = {}, amount = {}".format(self.__amount_original, self.__currency, self.__amount)
+        str += ", avg_price = {}, date = {}, type = {}".format(self.__avg_price, self.__date, self.__type)
+        return str
+
     def empty(self):
         return self.status is None
 
@@ -163,6 +169,9 @@ class Order(object):
 
     def get_amount(self):
         return self.__amount
+
+    def get_amount_original(self):
+        return self.__amount_original
 
     def is_market_order(self):
         return self.__price == 0.0
@@ -183,7 +192,7 @@ class Order(object):
         return self.__sub_orders
 
     def get_avg_price(self):
-        return self.__avg_price
+        return self.__avg_price if self.get_price() == 0.0 else self.get_price()
 
     def set_sub_orders(self, sub_orders):
         # 市价订单被拆分成不同价格成交
@@ -204,6 +213,9 @@ class Order(object):
 
     def is_sell(self):
         return self.__type == common.OrderType.ASK
+
+    def get_fee(self):
+        return 0.0
 
 class Deposit(object):
     DEPOSIT_STATUS_PENDING = 'pending'

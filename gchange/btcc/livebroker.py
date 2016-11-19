@@ -40,12 +40,7 @@ class TradeMonitor(threading.Thread):
         获取用户最新交易
         :return:
         """
-        since = self.__lastTradeId if self.__lastTradeId != -1 else None
-        #userTrades = self.__exchange.get_transactions(since=since)
         userTrades = self.__exchange.get_orders()
-
-        common.logger.info('_getNewTrades %s' % userTrades)
-
         # 只抽取 buybtc和sellbtc交易，并且排序
         # ut.sort(key=lambda x: x.count, reverse=True)
         """
@@ -145,7 +140,7 @@ class LiveBroker(broker.Broker):
 
         common.logger.info('start refresh open orders')
 
-        openOrders = self.__exchange.get_orders()
+        openOrders = self.__exchange.get_orders(open_only=True)
 
         for openOrder in openOrders:
             self._registerOrder(build_order_from_open_order(openOrder, self.getInstrumentTraits(common.CoinSymbol.BTC)))
@@ -160,33 +155,37 @@ class LiveBroker(broker.Broker):
         self.__tradeMonitor.start()
         self.__stop = False
 
+    def _switch_order_status(self, order, trade):
+        if order is not None and trade.get_status() != common.OrderStatus.PENDING:
+            fee = trade.get_fee()
+            # 获取成交价
+            fillPrice = float(trade.get_avg_price())
+            # 获取成交量
+            btcAmount = float(trade.get_amount_original())
+            # 获取交易时间
+            dateTime = trade.get_datetime()
+
+            self.refreshAccountBalance()
+
+            # 更新Order
+            orderExecutionInfo = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
+            order.addExecutionInfo(orderExecutionInfo)
+            if not order.isActive():
+                self._unregisterOrder(order)
+            # 通知更新订单状态
+            if order.isFilled():
+                eventType = broker.OrderEvent.Type.FILLED
+            else:
+                eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
+            self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
+        else:
+            pass
+            #common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), order.getId()))
+
     def _onUserTrades(self, trades):
         for trade in trades:
             order = self.__activeOrders.get(trade.get_id())
-            if order is not None:
-                fee = trade.get_fee()
-                # 获取成交价
-                fillPrice = trade.get_btc_price()
-                # 获取成交量
-                btcAmount = trade.get_btc_amount()
-                # 获取交易时间
-                dateTime = trade.get_datetime()
-
-                self.refreshAccountBalance()
-
-                # 更新Order
-                orderExecutionInfo = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
-                order.addExecutionInfo(orderExecutionInfo)
-                if not order.isActive():
-                    self._unregisterOrder(order)
-                # 通知更新订单状态
-                if order.isFilled():
-                    eventType = broker.OrderEvent.Type.FILLED
-                else:
-                    eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
-                self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
-            else:
-                common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), order.getId()))
+            self._switch_order_status(order, trade)
 
     # BEGIN observer.Subject interface
     def start(self):
@@ -260,6 +259,7 @@ class LiveBroker(broker.Broker):
                     btccOrder = self.__exchange.buy(amount=order.getQuantity(), price=order.getLimitPrice())
                 else:
                     raise Exception('仅支持 市价/限价 交易')
+                common.logger.info('买入订单 %s' % btccOrder)
             else:
                 if order.getType() == broker.Order.Type.MARKET:
                     btccOrder = self.__exchange.sell(amount=order.getQuantity())
@@ -267,8 +267,7 @@ class LiveBroker(broker.Broker):
                     btccOrder = self.__exchange.sell(amount=order.getQuantity(), price=order.getLimitPrice())
                 else:
                     raise Exception('仅支持 市价/限价 交易')
-
-            common.logger.info('Buy completed order = %s' % btccOrder)
+                common.logger.info('卖出订单 %s' % btccOrder)
 
             order.setSubmitted(btccOrder.get_id(), btccOrder.get_datetime())
             self._registerOrder(order)
@@ -276,9 +275,6 @@ class LiveBroker(broker.Broker):
             # IMPORTANT: Do not emit an event for this switch because when using the position interface
             # the order is not yet mapped to the position and Position.onOrderUpdated will get called.
             order.switchState(broker.Order.State.SUBMITTED)
-
-            # 按市价提交的订单，立即成交
-
         else:
             raise Exception('The order was already processed')
 
@@ -318,21 +314,30 @@ class LiveBroker(broker.Broker):
         raise Exception('Stop limit orders are not supported')
 
     def cancelOrder(self, order):
-        activeOrder = self.__activeOrders.get(order.getId())
+        __id = order.getId()
+        activeOrder = self.__activeOrders.get(__id)
+        common.logger.info('cancel order %s' % __id)
         if activeOrder is None:
             raise Exception('The order is not active anymore')
         if activeOrder.isFilled():
             raise Exception('Can not cancel order that has already been filled')
 
-        self.__exchange.cancel(order_id=order.getId())
-        self._unregisterOrder(order)
-        order.switchState(broker.Order.State.CANCELED)
+        ret = self.__exchange.cancel(order_id=__id)
 
         # 更新账户
         self.refreshAccountBalance()
 
-        # 发通知，这个订单被取消
-        self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.CANCELED, "用户主动取消"))
+        if ret:
+            # 取消成功
+            self._unregisterOrder(order)
+            order.switchState(broker.Order.State.CANCELED)
+
+            # 发通知，这个订单被取消
+            self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.CANCELED, "用户主动取消"))
+        else:
+            # 取消失败
+            trade = self.__exchange.get_order(__id)
+            self._switch_order_status(activeOrder, trade)
 
     # END broker.Broker interface
 

@@ -19,6 +19,7 @@ class OrderType(object):
 
 class OrderStatus(object):
     OPEN = 'open'
+    PENDING = 'pending'
     CANCELED = 'cancelled'
     CLOSED = 'closed'
 

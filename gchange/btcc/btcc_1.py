@@ -30,7 +30,7 @@ class Strategy(strategy.BaseStrategy):
         if bid != self.__bid or ask != self.__ask:
             self.__bid = bid.get_price()
             self.__ask = ask.get_price()
-            self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
+            #self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
 
     def onEnterOk(self, position):
         self.info("Position opened at %s" % (position.getEntryOrder().getExecutionInfo().getPrice()))
@@ -45,7 +45,8 @@ class Strategy(strategy.BaseStrategy):
 
     def onExitCanceled(self, position):
         # If the exit was canceled, re-submit it.
-        self.__position.exitLimit(self.__bid)
+        self.info('on exit canceled')
+        #self.__position.exitLimit(self.__bid)
 
     def onFinish(self, bars):
         print 'finish'
@@ -59,15 +60,12 @@ class Strategy(strategy.BaseStrategy):
             return
 
         # If a position was not opened, check if we should enter a ƒlong position.
-        """"""
         if self.__position is None:
-            self.info("Entry signal. Buy at %s" % (self.__ask))
-            self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
-            """
+            #self.info("Entry signal. Buy at %s" % (self.__ask))
+            #self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
             if cross.cross_above(self.__prices, self.__sma) > 0:
                 self.info("Entry signal. Buy at %s" % (self.__ask))
                 self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
-            """
         # Check if we have to close the position.
         elif not self.__position.exitActive() and cross.cross_below(self.__prices, self.__sma) > 0:
             self.info("Exit signal. Sell at %s" % (self.__bid))
