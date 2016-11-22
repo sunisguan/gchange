@@ -11,6 +11,7 @@ import json
 
 import requests
 import threading
+import logging
 
 class BtccHttpClient(object):
 
@@ -52,6 +53,8 @@ class BtccHttpClient(object):
         self.__access_key = common.BTCC_ACCESS_KEY
         self.__secret_key = common.BTCC_SECRET_KEY
         self.__lock = threading.Lock()
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     def _get_tonce(self):
         return int(time.time()*1000000)
@@ -131,7 +134,6 @@ class BtccHttpClient(object):
         :param acount_type: AccountParams, 默认是ALL
         :return:
         """
-        print('[{} start...]'.format(self.get_account_info.__name__))
         post_data = {'method' : 'getAccountInfo'}
         post_data['params'] = [] if not acount_type else [acount_type]
         return self._request(post_data)
@@ -143,7 +145,6 @@ class BtccHttpClient(object):
         :param market: 可选值BTCCNY、LTCCNY、LTCBTC、ALL 默认值为BTCCNY
         :return: 对象数组：market_depth
         """
-        print('[{} start...]'.format(self.get_market_depth2.__name__))
         post_data = {'method' : 'getMarketDepth2', 'params' : [limit, market]}
         return self._request(post_data)
 
@@ -172,7 +173,6 @@ class BtccHttpClient(object):
         :param market: 可使用[BTCCNY],[LTCCNY],[LTCBTC] 默认值为BTCCNY
         :return: order id
         """
-        print('[{} start...]'.format(self.buy_limit.__name__))
         if not price:
             print('限价单价格不能为空')
         else:
@@ -185,7 +185,6 @@ class BtccHttpClient(object):
         :param market: 可使用[BTCCNY],[LTCCNY],[LTCBTC] 默认值为BTCCNY
         :return:
         """
-        print('[{} start...]'.format(self.buy_market.__name__))
         return self._buy(None, amount, market)
 
     def buy_iceberg_order(self):
@@ -222,7 +221,6 @@ class BtccHttpClient(object):
         :param market: 可选值BTCCNY、LTCCNY、LTCBTC 默认值为BTCCNY
         :return: order id
         """
-        print('[{} start...]'.format(self.sell_limit.__name__))
         if not price:
             print('限价单价格不能为空')
         else:
@@ -235,7 +233,6 @@ class BtccHttpClient(object):
         :param market: 可选值BTCCNY、LTCCNY、LTCBTC 默认值为BTCCNY
         :return: order id
         """
-        print('[{} start...]'.format(self.sell_market.__name__))
         return self._sell(None, amount, market)
 
     def cancel(self, order_id, market = MarketParams.BTC_CNY):
@@ -245,7 +242,6 @@ class BtccHttpClient(object):
         :param market:
         :return:
         """
-        print('[{} start...]'.format(self.cancel.__name__))
         if not order_id:
             print('取消订单 id 不能为空')
         else:
@@ -262,7 +258,6 @@ class BtccHttpClient(object):
         :param amount: 提现金额
         :return: 返回提现 ID
         """
-        print('[{} start...]'.format(self.request_withdrawal.__name__))
         post_data = {'method' : 'requestWithdrawal'}
         post_data['params'] = [currency, amount]
         return self._request(post_data)
@@ -274,7 +269,6 @@ class BtccHttpClient(object):
         :param pending: 默认为“true”。如果为“true”，仅返回尚未入账的比特币或者莱特币充值
         :return:
         """
-        print('[{} start...]'.format(self.get_deposits.__name__))
         post_data = {'method' : 'getDeposits'}
         post_data['params']=[currency, pending]
         return self._request(post_data)
@@ -300,7 +294,6 @@ class BtccHttpClient(object):
         :param market: 可选值BTCCNY、LTCCNY、LTCBTC、ALL 默认值为BTCCNY
         :return: btcc_model.Order List
         """
-        print('[{} start...]'.format(self.get_orders.__name__))
         post_data = {}
         # this combines getOrder and getOrders
         if order_id is None:
@@ -318,7 +311,6 @@ class BtccHttpClient(object):
         :param currency: BTC 和 LTC 默认为“BTC”
         :return:
         """
-        print('[{} start...]'.format(self.get_withdrawal.__name__))
         post_data = {'method' : 'getWithdrawal'}
         withdrawals_id = int(withdrawals_id)
         post_data['params'] = [withdrawals_id, currency]
@@ -331,7 +323,6 @@ class BtccHttpClient(object):
         :param pending_only: 默认为“true”。如果为“true”，仅返回尚未处理的提现记录
         :return:
         """
-        print('[{} start...]'.format(self.get_withdrawals.__name__))
         post_data = {'method' : 'getWithdrawals'}
         post_data['params'] = [currency, pending_only]
         return self._request(post_data)
@@ -348,7 +339,6 @@ class BtccHttpClient(object):
         :param sincetype: 指定since参数的类型，可以是“id”或者“time”，默认值为“time”.
         :return:
         """
-        print('[{} start...]'.format(self.get_transactions.__name__))
         post_data = {'method' : 'getTransactions'}
         post_data['params'] = [trans_type, limit, offset]
         return self._request(post_data)
@@ -361,7 +351,6 @@ class BtccHttpClient(object):
         :param withdetail: 是否返回订单详细.
         :return:
         """
-        print('[{} start...]'.format(self.get_archived_order.__name__))
         post_data = {'method' : 'getArchivedOrder'}
         post_data['params'] = [order_id, market, withdetail]
         return self._request(post_data)
@@ -375,7 +364,6 @@ class BtccHttpClient(object):
         :param withdetail: 是否返回此订单对应的详细信息.
         :return:
         """
-        print('[{} start...]'.format(self.get_archived_orders.__name__))
         post_data = {'method' : 'getArchivedOrders'}
         post_data['params'] = [market, limit, less_than_order_id, withdetail]
         return self._request(post_data)

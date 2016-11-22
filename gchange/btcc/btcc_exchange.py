@@ -3,6 +3,7 @@ import btcc_http_client as bhc
 import btcc_model as bm
 import common
 from pyalgotrade import broker
+import time
 
 class BtccExchange(object):
 
@@ -57,6 +58,7 @@ class BtccExchange(object):
             resp, status = self.__hc.buy_limit(price=price, amount=amount, market=market)
         if status:
             # 买单报单成功, 获取挂单状态，初始化order
+            time.sleep(1)
             order_id = resp
             resp, status = self.__hc.get_order(order_id=order_id)
             if status:
@@ -86,6 +88,7 @@ class BtccExchange(object):
             resp, status = self.__hc.sell_limit(price=price, amount=amount, market=market)
         if status:
             # 卖单报单成功, 获取挂单状态，初始化order
+            time.sleep(1)
             order_id = resp
             resp, status = self.__hc.get_order(order_id=resp)
             if status:

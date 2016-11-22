@@ -32,6 +32,8 @@ class Strategy(strategy.BaseStrategy):
         # Subscribe to order book update events to get bid/ask prices to trade.
         feed.get_marketdepth_update_event().subscribe(self.__onMarketdepth_update)
 
+        self.setUseEventDateTimeInLogs(True)
+
     def __onMarketdepth_update(self, marketdepth):
         bid = marketdepth.get_top_bid()
         ask = marketdepth.get_top_ask()
@@ -39,7 +41,7 @@ class Strategy(strategy.BaseStrategy):
         if bid != self.__bid or ask != self.__ask:
             self.__bid = bid.get_price()
             self.__ask = ask.get_price()
-            #self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
+            self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
 
     def onEnterOk(self, position):
         self.info("Position opened at %s" % (position.getEntryOrder().getExecutionInfo().getPrice()))
@@ -82,12 +84,18 @@ class Strategy(strategy.BaseStrategy):
             self.info("Entry signal. Buy at %s" % (self.__ask))
             self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
 
+    def onOrderUpdated(self, order):
+        super(Strategy, self).onOrderUpdated(order)
+
+
+
 
 
 import time
 
-DURATION = 60*60
+DURATION = 60*60*5
 paras = [10, 30]
+captial = 1000.00
 
 class _ToStopThread(threading.Thread):
     def __init__(self, feed):
@@ -123,8 +131,8 @@ def __do_live():
 
 def  __do_backtesting():
     bar_feed = LiveTradeFeed(duration=DURATION)
-    brk = BacktestingBroker(1000, bar_feed)
-    strat = Strategy(bar_feed, brk)
+    brk = BacktestingBroker(captial, bar_feed)
+    strat = Strategy(bar_feed, brk, *paras)
     plot = True
 
     ############################################# don't change ############################
@@ -151,6 +159,9 @@ def  __do_backtesting():
     _thread.start()
 
     strat.run()
+
+    print '收益率 = ', strat.getBroker().getEquity() / captial
+
     print '-------'
     if plot:
         plt.plot()
@@ -168,8 +179,8 @@ def  __do_backtesting():
 
 
 def main():
-    __do_live()
-    #__do_backtesting()
+    #__do_live()
+    __do_backtesting()
 
 if __name__ == "__main__":
     main()

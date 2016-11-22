@@ -41,8 +41,7 @@ class TradeMonitor(threading.Thread):
         :return:
         """
         userTrades = self.__exchange.get_orders()
-        # 只抽取 buybtc和sellbtc交易，并且排序
-        # ut.sort(key=lambda x: x.count, reverse=True)
+
         """
         trans_remove = []
         for trans in userTrades:
@@ -54,15 +53,15 @@ class TradeMonitor(threading.Thread):
 
         # Get the new trades only.
         ret = []
-        common.logger.info('last trade id = %s' % self.__lastTradeId)
         for userTrade in userTrades:
-            if userTrade.get_id() > self.__lastTradeId:
+            if userTrade.get_id() > self.__lastTradeId or userTrade.get_status() in (common.OrderStatus.OPEN, common.OrderStatus.PENDING):
                 ret.append(userTrade)
-            else:
-                break
         # Older trades first.reverse
-        ret.reverse()
-        common.logger.info('ret len = %s' % len(ret))
+        ret.sort(key=lambda x: x.get_id(), reverse=False)
+
+        #common.logger.info('last trade id = %s' % self.__lastTradeId)
+        #common.logger.info('new trades len = %s' % len(ret))
+
         return ret
 
     def getQueue(self):
@@ -157,38 +156,46 @@ class LiveBroker(broker.Broker):
         self.__tradeMonitor.start()
         self.__stop = False
 
-    def _switch_order_status(self, order, trade):
-        if order is not None and trade.get_status() != common.OrderStatus.PENDING:
-            fee = trade.get_fee()
-            # 获取成交价
-            fillPrice = float(trade.get_avg_price())
-            # 获取成交量
-            btcAmount = float(trade.get_amount_original())
-            # 获取交易时间
-            dateTime = trade.get_datetime()
+    def _order_filled(self, trade, order):
+        fee = trade.get_fee()
+        # 获取成交价
+        fillPrice = float(trade.get_avg_price())
+        # 获取成交量
+        btcAmount = float(trade.get_amount_original())
+        # 获取交易时间
+        dateTime = trade.get_datetime()
 
-            self.refreshAccountBalance()
-
-            # 更新Order
-            orderExecutionInfo = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
-            common.logger.info('>>>>>>>> id = %s' % trade.get_id())
-            order.addExecutionInfo(orderExecutionInfo)
-            if not order.isActive():
-                self._unregisterOrder(order)
-            # 通知更新订单状态
-            if order.isFilled():
-                eventType = broker.OrderEvent.Type.FILLED
-            else:
-                eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
-            self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
+        exe_info = broker.OrderExecutionInfo(fillPrice, abs(btcAmount), fee, dateTime)
+        order.addExecutionInfo(exe_info)
+        if order.isFilled():
+            eventType = broker.OrderEvent.Type.FILLED
         else:
-            pass
-            #common.logger.info('Trade %d refered to order %d that is not active' % (trade.get_id(), order.getId()))
+            eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
+        if not order.isActive():
+            self._unregisterOrder(order)
+        self.notifyOrderEvent(broker.OrderEvent(order, eventType, exe_info))
+
+    def _order_cancelled(self, order):
+        order.switchState(broker.Order.State.CANCELED)
+        self._unregisterOrder(order)
+        self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.CANCELED, '挂单取消'))
 
     def _onUserTrades(self, trades):
         for trade in trades:
             order = self.__activeOrders.get(trade.get_id())
-            self._switch_order_status(order, trade)
+
+            if order is not None:
+                __status = trade.get_status()
+                if __status == common.OrderStatus.CLOSED:
+                    self._order_filled(trade, order)
+                elif __status == common.OrderStatus.CANCELED:
+                    # 订单已经取消, 转换订单状态，并从有效挂单中移除
+                    self._order_cancelled(order)
+                else:
+                    pass
+            else:
+                pass
+        self.refreshAccountBalance()
 
     # BEGIN observer.Subject interface
     def start(self):
@@ -320,7 +327,6 @@ class LiveBroker(broker.Broker):
     def cancelOrder(self, order):
         __id = order.getId()
         activeOrder = self.__activeOrders.get(__id)
-        common.logger.info('cancel order %s' % __id)
         if activeOrder is None:
             raise Exception('The order is not active anymore')
         if activeOrder.isFilled():
@@ -330,17 +336,13 @@ class LiveBroker(broker.Broker):
 
         if ret:
             # 取消成功
-            self._unregisterOrder(order)
-            order.switchState(broker.Order.State.CANCELED)
-            # 更新账户
-            self.refreshAccountBalance()
-
-            # 发通知，这个订单被取消
-            self.notifyOrderEvent(broker.OrderEvent(order, broker.OrderEvent.Type.CANCELED, "用户主动取消"))
+            self._order_cancelled(order)
         else:
-            # 取消失败
-            trade = self.__exchange.get_order(__id)
-            self._switch_order_status(activeOrder, trade)
+            # 取消失败，订单已经完成
+            trade = self.__exchange.get_order(order_id=__id)
+            if trade is not None and trade.get_status() == common.OrderStatus.CLOSED:
+                self._order_filled(trade, order)
+        self.refreshAccountBalance()
 
     # END broker.Broker interface
 
