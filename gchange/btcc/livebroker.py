@@ -42,15 +42,6 @@ class TradeMonitor(threading.Thread):
         """
         userTrades = self.__exchange.get_orders()
 
-        """
-        trans_remove = []
-        for trans in userTrades:
-            if trans.get_type() not in (common.TransactionType.BUY_BTC, common.TransactionType.SELL_BTC):
-                trans_remove.append(trans)
-        userTrades = list(set(userTrades) - set(trans_remove))
-        userTrades.sort(key=lambda  x: x.get_id(), reverse=True)
-        """
-
         # Get the new trades only.
         ret = []
         for userTrade in userTrades:

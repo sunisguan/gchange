@@ -179,8 +179,8 @@ def  __do_backtesting():
 
 
 def main():
-    #__do_live()
-    __do_backtesting()
+    __do_live()
+    #__do_backtesting()
 
 if __name__ == "__main__":
     main()

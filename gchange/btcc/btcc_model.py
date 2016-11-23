@@ -272,33 +272,40 @@ class Transaction(object):
 class Ticker(object):
     def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):
         # 近24小时内最高价格
-        self.high = high
+        self.__high = high
         # 近24小时内最低价格
-        self.low = low
+        self.__low = low
         # 最高出价
-        self.buy = buy
+        self.__buy = buy
         # 最低要价
-        self.sell = sell
+        self.__sell = sell
         # 最新成交价
-        self.last = last
+        self.__last = last
         # 近24小时内比特币成交量
-        self.vol = vol
+        self.__vol = vol
         # 最新更新时间戳
-        self._timestamp = date
+        self.__date = date
         # 近24小时内平均成交价
-        self.vwap = vwap
+        self.__vwap = vwap
         # 昨日收盘价
-        self.prev_close = prev_close
+        self.__prev_close = prev_close
         # 今日开盘价
-        self.open = open 
-
-    @property
-    def date(self):
-        return timestamp_to_strtime_10(self._timestamp)
+        self.__open = open
 
     def __str__(self):
-        s = 'high = {}, low = {}, buy = {}, sell = {}, last = {}, vol = {}, date = {}, vwap = {}, prev_close = {}, open = {}'
-        return s.format(self.high, self.low, self.buy, self.sell, self.last, self.vol, self.date, self.vwap, self.prev_close, self.open)
+        s = [
+            'high = %s' % self.__high,
+            'low = %s' % self.__low,
+            'buy = %s' % self.__buy,
+            'sell = %s' % self.__sell,
+            'last = %s' % self.__last,
+            'vol = %s' % self.__vol,
+            'date = %s' % self.__date,
+            'vwap = %s' % self.__vwap,
+            'prev_close = %s' % self.__prev_close,
+            'open = %s' % self.__open
+        ]
+        return '\n'.join(s)
 
 class HistoryData(ModelAdapter):
 

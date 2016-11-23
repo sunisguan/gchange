@@ -381,10 +381,11 @@ class BtccHttpClient(object):
         print('[{} start...]'.format(self.get_orderbook.__name__))
         #return self._handle_service_resp(requests.request('GET', 'https://pro-data.btcc.com/data/pro/orderbook'))
 
-    def get_ticker(self):
-        # TODO: get ticker
-        print('[{} start...]'.format(self.get_ticker.__name__))
-        #return self._handle_service_resp(requests.request('GET', 'https://pro-data.btcc.com/data/pro/ticker?symbol=XBTCNY'))
+    def get_ticker(self, market=MarketParams.BTC_CNY):
+        url = "https://data.btcchina.com/data/ticker?market=" + market
+        return self._handle_service_resp(requests.request('GET', url))
+
+
 
     def get_history_data(self, limit = 100, since = None, sincetype = None):
         """
@@ -394,14 +395,12 @@ class BtccHttpClient(object):
         :param sincetype:
         :return:
         """
-        print('[{} start...]'.format(self.get_history_data.__name__))
         url = 'https://data.btcchina.com/data/historydata?' + 'limit=' + str(limit)
 
         if sincetype:
             url += '&sincetype=' + sincetype
         if since:
             url += '&since=' + str(since)
-        print('url = ' + url)
         return self._handle_service_resp(requests.request('GET', url))
 
 
