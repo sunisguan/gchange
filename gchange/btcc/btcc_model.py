@@ -109,25 +109,6 @@ class PriceAmount(object):
     def __str__(self):
         return 'price = {0:.4f}, amount = {1:.4f}'.format(self.price, self.amount)
 
-
-class MarketDepth(object):
-    def __init__(self, json_data):
-        self.ask = []
-        self.bid = []
-        self._data = None
-
-        if json_data:
-            json_data = json_data['market_depth']
-            ask_data = json_data['ask']
-            for item in ask_data:
-                self.ask.append(PriceAmount(item['price'], item['amount']))
-            
-            ask_data = json_data['bid']
-            for item in ask_data:
-                self.bid.append(PriceAmount(item['price'], item['amount']))
-
-            self._data = json_data['date']
-
 class Order(object):
 
     class SubOrder(object):
@@ -217,6 +198,16 @@ class Order(object):
     def get_fee(self):
         return 0.0
 
+class Trade(object):
+    def __init__(self, trade_id, price, amount, date, market, type):
+        self.__trade_id = trade_id
+        self.__price = price
+        self.__amount = amount
+        self.__date = date
+        self.__market = market
+        self.__type = type
+
+
 class Deposit(object):
     DEPOSIT_STATUS_PENDING = 'pending'
     DEPOSIT_STATUS_COMPLETED = 'completed'
@@ -270,7 +261,7 @@ class Transaction(object):
         return self.__type
 
 class Ticker(object):
-    def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open):
+    def __init__(self, high, low, buy, sell, last, vol, date, vwap, prev_close, open, market):
         # 近24小时内最高价格
         self.__high = high
         # 近24小时内最低价格
@@ -306,6 +297,56 @@ class Ticker(object):
             'open = %s' % self.__open
         ]
         return '\n'.join(s)
+
+
+class MarketDepth(object):
+    class Depth(object):
+        def __init__(self, totalamount, price, type):
+            self.__totalamount = totalamount
+            self.__price = price
+            self.__type = type
+
+        def get_type(self):
+            return self.__type
+
+        def get_amount(self):
+            return self.__totalamount
+
+        def get_price(self):
+            return self.__price
+
+    def __init__(self, ask, bid, market):
+        # 只是为了打印方便
+        self.__ask__ = ask
+        self.__bid__ = bid
+
+        self.__asks = []
+        self.__bids = []
+        self.__market = market
+        for item in ask:
+            item = MarketDepth.Depth(**item)
+            self.__asks.append(item)
+        for item in bid:
+            item = MarketDepth.Depth(**item)
+            self.__bids.append(item)
+
+        self.__asks.sort(key=lambda x:x.get_price(), reverse=True)
+        self.__bids.sort(key=lambda x: x.get_price(), reverse=True)
+
+    def get_asks(self):
+        return self.__asks
+
+    def get_bids(self):
+        return self.__bids
+
+    def get_top_ask(self):
+        return self.__asks[0]
+
+    def get_top_bid(self):
+        return self.__bids[0]
+
+    def __str__(self):
+        return 'asks = ', self.__ask__, ', bids = ', self.__bids
 
 class HistoryData(ModelAdapter):
 

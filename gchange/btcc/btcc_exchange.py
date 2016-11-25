@@ -2,13 +2,58 @@
 import btcc_http_client as bhc
 import btcc_model as bm
 import common
-from pyalgotrade import broker
+from socketIO_client import SocketIO, BaseNamespace
 import time
+import re
+import hmac
+import hashlib
+import base64
+import threading
+import Queue
+from pyalgotrade import observer
+import json
+
 
 class BtccExchange(object):
 
-    def __init__(self):
+    def __init__(self, duration=''):
         self.__hc = bhc.BtccHttpClient()
+        # 准备事件回调
+        self.__orderbook_update_event = observer.Event()
+        self.__trade_event = observer.Event()
+        self.__ticker_event = observer.Event()
+
+        self.__events = {
+            BtccWebsocketClient.Event.ON_ORDER_BOOK_UPDATE: observer.Event(),
+            BtccWebsocketClient.Event.ON_TRADE: observer.Event(),
+            BtccWebsocketClient.Event.ON_TICKER: observer.Event(),
+        }
+        self.__socket_thread = WebSocketClientThread(duration=duration, events=self.__events)
+
+    def subscribe_event(self, event_type, handler):
+        if event_type not in self.__events.keys() or handler is None:
+            return
+        else:
+            self.__events[event_type].subscribe(handler)
+
+    def start_websocket_client(self):
+        """
+        开启 websocket 监听，包括市场深度，交易，订单更新
+        :return:
+        """
+        try:
+            self.__socket_thread.start()
+            common.logger.info('web socket start ok')
+        except Exception as e:
+            common.logger.error('web socket start error: %s' % e)
+        finally:
+            return self.__socket_thread.isAlive()
+
+    def is_client_alive(self):
+        return self.__socket_thread.isAlive()
+
+    def get_socket_queue(self):
+        return self.__socket_thread.get_queue()
 
     def get_account_profile(self):
         """
@@ -145,6 +190,180 @@ class BtccExchange(object):
                 return [bm.Transaction(**trans) for trans in resp['transaction']]
             else:
                 raise Exception('获取交易记录失败')
+
+
+class BtccWebsocketEventHandler(object):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        super(BtccWebsocketEventHandler, self).__init__()
+
+    @abc.abstractmethod
+    def on_ticker(self, *args):
+        pass
+
+    @abc.abstractmethod
+    def on_trade(self, *args):
+        pass
+
+    @abc.abstractmethod
+    def on_order_update(self, *args):
+        pass
+
+    @abc.abstractmethod
+    def on_connected(self):
+        pass
+
+    @abc.abstractmethod
+    def on_disconnected(self):
+        pass
+
+    @abc.abstractmethod
+    def on_market_depth(self, *args):
+        pass
+
+
+class BtccWebsocketClient(BaseNamespace):
+
+    # Events
+    class Event(object):
+        ON_TRADE = 1
+        ON_ORDER_BOOK_UPDATE = 2
+        ON_CONNECTED = 3
+        ON_DISCONNECTED = 4
+        ON_MARKETDEPTH = 5
+        ON_TICKER = 6
+
+    def __init__(self, io, path = ''):
+        super(BtccWebsocketClient, self).__init__(io, path)
+        self.__queue = Queue.Queue()
+        # btcc返回的 trade 时间没有毫秒，导致时间时间相同
+        self.__millisecond_to_add = 1
+        self.__events = None
+
+    def get_queue(self):
+        return self.__queue
+
+    def set_events(self, events):
+        self.__events = events
+
+    def on_connect(self):
+        self.__dispatch(self.Event.ON_CONNECTED, None)
+        self.__queue.put((BtccWebsocketClient.Event.ON_CONNECTED, None))
+
+    def on_disconnect(self):
+        self.__queue.put((BtccWebsocketClient.Event.ON_DISCONNECTED, None))
+
+    def on_ticker(self, *args):
+        # 接收到市场 Ticker 数据
+        self.__dispatch(self.Event.ON_TICKER, args[0]['ticker'])
+        self.__queue.put((BtccWebsocketClient.Event.ON_TICKER, bm.Ticker(**args[0]['ticker'])))
+
+    def on_trade(self, *args):
+        # 接收到市场交易数据
+        self.__queue.put((BtccWebsocketClient.Event.ON_TRADE, bm.Trade(**args[0])))
+
+    def on_grouporder(self, *args):
+        # 接收到市场深度
+        self.__queue.put((BtccWebsocketClient.Event.ON_MARKETDEPTH, bm.MarketDepth(**(args[0]['grouporder']))))
+
+    def on_order(self, *args):
+        # 接收到订单状态更新
+        self.__queue.put((BtccWebsocketClient.Event.ON_ORDER_BOOK_UPDATE, bm.Order(**args[0])))
+
+    def on_account_info(self, *args):
+        pass
+
+    def on_message(self, *args):
+        pass
+
+    def on_error(self, data):
+        common.logger.error("Error: %s" % data)
+
+    def __dispatch(self, event_type, data):
+        if self.__events is not None and event_type in self.__events.keys():
+            self.__events[event_type].emit(data)
+
+class WebSocketClientThread(threading.Thread):
+    def __init__(self, duration='', events=None):
+        self.__socketIO = None
+        self.__ws_client = None
+        self.__duration = duration
+        self.__events = events
+
+        super(WebSocketClientThread, self).__init__()
+
+    def get_queue(self):
+        return self.__ws_client.get_queue()
+
+    def start(self):
+        self.__socketIO = SocketIO('websocket.btcc.com', 80)
+        self.__ws_client = self.__socketIO.define(BtccWebsocketClient)
+        self.__ws_client.set_events(self.__events)
+
+        self.__ws_client.emit('subscribe', 'marketdata_cnybtc')
+        self.__ws_client.emit('subscribe', 'grouporder_cnybtc')
+
+        payload = _get_postdata()
+        arg = [json.dumps(payload), _get_sign(payload)]
+        self.__ws_client.emit('private', arg)
+
+        common.logger.info('btcc web socket client start')
+
+        super(WebSocketClientThread, self).start()
+
+    def run(self):
+        super(WebSocketClientThread, self).run()
+        if self.__duration != '':
+            self.__socketIO.wait(self.__duration)
+        else:
+            self.__socketIO.wait()
+
+    def stop(self):
+        try:
+            self.__ws_client.off('subscribe')
+            self.__ws_client.off('private')
+            self.__ws_client.disconnect()
+            common.logger.info("WebSocketClientThread Stopping websocket client.")
+        except Exception, e:
+            common.logger.error("Error stopping websocket client: %s." % (str(e)))
+
+
+def _get_postdata():
+    post_data = {}
+    tonce = int(time.time() * 1000000)
+    post_data['tonce'] = tonce
+    post_data['accesskey'] = common.BTCC_ACCESS_KEY
+    post_data['requestmethod'] = 'post'
+
+    if 'id' not in post_data:
+        post_data['id'] = tonce
+
+    # modefy here to meet your requirement
+    post_data['method'] = 'subscribe'
+    post_data['params'] = ['order_cnybtc', 'order_cnyltc', 'order_btcltc', 'account_info']
+    return post_data
+
+
+def _get_sign(pdict):
+    pstring = ''
+    fields = ['tonce', 'accesskey', 'requestmethod', 'id', 'method', 'params']
+    for f in fields:
+        if pdict[f]:
+            if f == 'params':
+                param_string = str(pdict[f])
+                param_string = param_string.replace('None', '')
+                param_string = re.sub("[\[\] ]", "", param_string)
+                param_string = re.sub("'", '', param_string)
+                pstring += f + '=' + param_string + '&'
+            else:
+                pstring += f + '=' + str(pdict[f]) + '&'
+        else:
+            pstring += f + '=&'
+    pstring = pstring.strip('&')
+    phash = hmac.new(common.BTCC_SECRET_KEY, pstring, hashlib.sha1).hexdigest()
+
+    return base64.b64encode(common.BTCC_ACCESS_KEY + ':' + phash)
 
 
 

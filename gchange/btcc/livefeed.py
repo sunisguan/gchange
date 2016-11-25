@@ -7,12 +7,7 @@ import time
 import datetime
 import websocket_client
 import Queue
-
-class MarketDepthBar(bar.Bar):
-    __slots__ = ('__datetime', '__tid', '__price', '__amount')
-
-    def __init__(self):
-        pass
+from .btcc_exchange import BtccExchange, BtccWebsocketClient
 
 
 class TradeBar(bar.Bar):
@@ -85,50 +80,22 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
 
     QUEUE_TIMEOUT = 0.01
 
-    def __init__(self, maxLen=None, duration=''):
+    def __init__(self, exchange, maxLen=None):
         super(LiveTradeFeed, self).__init__(bar.Frequency.TRADE, maxLen)
         self.__barDicts = []
         self.registerInstrument(common.CoinSymbol.BTC)
         self.__prevTradeDateTime = None
         self.__thread = None
         self.__initializationOk = None
-        self.__enableReconnection = False
         self.__stopped = False
-        self.__orderBookUpdateEvent = observer.Event()
-        self.__marketdepth_update_event = observer.Event()
-
-        # websocket 持续时间
-        self.__duration = duration
-
-    def buildWebSocketClientThread(self):
-        return websocket_client.WebSocketClientThread(duration=self.__duration)
+        self.__exchange = exchange
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_CONNECTED)
 
     def getCurrentDateTime(self):
         return websocket_client.get_current_datetime()
 
-    def enableReconection(self, enableReconnection):
-        self.__enableReconnection = enableReconnection
-
     def __initializeClient(self):
-        self.__initializationOk = None
-        common.logger.info('Initializing websocket client')
-
-        try:
-            # start the thread that runs the client
-            self.__thread = self.buildWebSocketClientThread()
-            self.__thread.start()
-        except Exception, e:
-            self.__initializationOk = False
-            common.logger.error('Error connecting : %s' % str(e))
-        # Wait for initialization to complete
-        while self.__initializationOk is None and self.__thread.is_alive():
-            self.__dispatchImpl([websocket_client.BtccWebsocketClient.ON_CONNECTED])
-
-        if self.__initializationOk:
-            common.logger.info('Initialization ok')
-        else:
-            common.logger.error('Initialization failed')
-        return self.__initializationOk
+        return self.__exchange.start_websocket_client()
 
     def __onConnected(self):
         self.__initializationOk = True
@@ -150,7 +117,6 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
             eventType, eventData = self.__thread.get_queue().get(True, LiveTradeFeed.QUEUE_TIMEOUT)
             if eventFilter is not None and eventType not in eventFilter:
                 return False
-
             ret = True
             if eventType == websocket_client.BtccWebsocketClient.ON_TRADE:
                 self.__onTrade(eventData)
@@ -191,14 +157,6 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         """
         barDict = {common.CoinSymbol.BTC: TradeBar(self.__getTradeDateTime(trade), trade)}
         self.__barDicts.append(barDict)
-
-    def __onMarketDepth(self, marketdepth):
-        """
-        使用市场深度创建 bar
-        :param marketdepth:
-        :return:
-        """
-        pass
 
     def barsHaveAdjClose(self):
         return False
