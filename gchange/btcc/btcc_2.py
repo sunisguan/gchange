@@ -5,7 +5,8 @@ from gchange.btcc import livebroker
 from pyalgotrade import strategy
 from pyalgotrade.technical import ma
 from pyalgotrade.technical import cross
-import threading
+import _do_strategy as ds
+from btcc_exchange import BtccExchange, BtccWebsocketClient
 
 class Strategy(strategy.BaseStrategy):
 
@@ -88,99 +89,30 @@ class Strategy(strategy.BaseStrategy):
         super(Strategy, self).onOrderUpdated(order)
 
 
+"""
+========================================
+"""
 
 
+class DoubleSMA(ds.StarategyRun):
+    def __init__(self):
+        super(DoubleSMA, self).__init__()
 
-import time
+    def config_live(self):
+        exchange = BtccExchange(duration=ds.CONFIG['DURATION'])
+        bar_feed = LiveTradeFeed(exchange)
+        brk = livebroker.LiveBroker()
+        return Strategy(bar_feed, brk, *ds.CONFIG['SMA_PARAS'])
 
-DURATION = 60*60*5
-paras = [10, 30]
-captial = 1000.00
-
-class _ToStopThread(threading.Thread):
-    def __init__(self, feed):
-        super(_ToStopThread, self).__init__()
-        self.__feed = feed
-        self.__count = 1
-
-    def start(self):
-        super(_ToStopThread, self).start()
-
-    def run(self):
-        super(_ToStopThread, self).run()
-
-        while self.__count < DURATION + 10:
-            time.sleep(1)
-            self.__count += 1
-        print 'stop feed'
-        self.__feed.stop()
-
-    def stop(self):
-        pass
-
-def __do_live():
-    bar_feed = LiveTradeFeed(duration=DURATION)
-    brk = livebroker.LiveBroker()
-    strat = Strategy(bar_feed, brk, *paras)
-
-    _thread = _ToStopThread(bar_feed)
-    _thread.start()
-
-    strat.run()
-    print '-------'
-
-def  __do_backtesting():
-    bar_feed = LiveTradeFeed(duration=DURATION)
-    brk = BacktestingBroker(captial, bar_feed)
-    strat = Strategy(bar_feed, brk, *paras)
-    plot = True
-
-    ############################################# don't change ############################
-    from pyalgotrade.stratanalyzer import returns
-    from pyalgotrade.stratanalyzer import sharpe
-    from pyalgotrade.stratanalyzer import drawdown
-    from pyalgotrade.stratanalyzer import trades
-    from pyalgotrade import plotter
-
-
-    retAnalyzer = returns.Returns()
-    strat.attachAnalyzer(retAnalyzer)
-    sharpeRatioAnalyzer = sharpe.SharpeRatio()
-    strat.attachAnalyzer(sharpeRatioAnalyzer)
-    drawDownAnalyzer = drawdown.DrawDown()
-    strat.attachAnalyzer(drawDownAnalyzer)
-    tradesAnalyzer = trades.Trades()
-    strat.attachAnalyzer(tradesAnalyzer)
-
-    if plot:
-        plt = plotter.StrategyPlotter(strat, True, True, True)
-
-    _thread = _ToStopThread(bar_feed)
-    _thread.start()
-
-    strat.run()
-
-    print '收益率 = ', strat.getBroker().getEquity() / captial
-
-    print '-------'
-    if plot:
-        plt.plot()
-
-        # 夏普率
-        sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
-        # 最大回撤
-        maxdd = drawDownAnalyzer.getMaxDrawDown()
-        # 收益率
-        return_ = retAnalyzer.getCumulativeReturns()[-1]
-        # 收益曲线
-        return_list = []
-        for item in retAnalyzer.getCumulativeReturns():
-            return_list.append(item)
+    def config_backtesting(self):
+        exchange = BtccExchange(duration=ds.CONFIG['DURATION'])
+        bar_feed = LiveTradeFeed(exchange)
+        brk = BacktestingBroker(ds.CONFIG['START_CAPTIAL'], bar_feed)
+        return Strategy(bar_feed, brk, *ds.CONFIG['SMA_PARAS'])
 
 
 def main():
-    __do_live()
-    #__do_backtesting()
+    DoubleSMA().run()
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ import threading
 import Queue
 from pyalgotrade import observer
 import json
+import abc
 
 
 class BtccExchange(object):
@@ -27,6 +28,7 @@ class BtccExchange(object):
             BtccWebsocketClient.Event.ON_ORDER_BOOK_UPDATE: observer.Event(),
             BtccWebsocketClient.Event.ON_TRADE: observer.Event(),
             BtccWebsocketClient.Event.ON_TICKER: observer.Event(),
+            BtccWebsocketClient.Event.ON_DISCONNECTED: observer.Event()
         }
         self.__socket_thread = WebSocketClientThread(duration=duration, events=self.__events)
 
@@ -49,8 +51,24 @@ class BtccExchange(object):
         finally:
             return self.__socket_thread.isAlive()
 
+    def stop_websocket_client(self):
+        ret = False
+        try:
+            if self.__socket_thread is not None and self.__socket_thread.is_alive():
+                common.logger.info('livefeed Shutting down websocket client')
+                self.__socket_thread.stop()
+                ret = True
+        except Exception, e:
+            common.logger.error('Error shutting down client: %s' % str(e))
+        finally:
+            return ret
+
     def is_client_alive(self):
-        return self.__socket_thread.isAlive()
+        return self.__socket_thread is not None and self.__socket_thread.isAlive()
+
+    def join_websocket_client(self):
+        if self.is_client_alive():
+            self.__socket_thread.join()
 
     def get_socket_queue(self):
         return self.__socket_thread.get_queue()
@@ -192,37 +210,6 @@ class BtccExchange(object):
                 raise Exception('获取交易记录失败')
 
 
-class BtccWebsocketEventHandler(object):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self):
-        super(BtccWebsocketEventHandler, self).__init__()
-
-    @abc.abstractmethod
-    def on_ticker(self, *args):
-        pass
-
-    @abc.abstractmethod
-    def on_trade(self, *args):
-        pass
-
-    @abc.abstractmethod
-    def on_order_update(self, *args):
-        pass
-
-    @abc.abstractmethod
-    def on_connected(self):
-        pass
-
-    @abc.abstractmethod
-    def on_disconnected(self):
-        pass
-
-    @abc.abstractmethod
-    def on_market_depth(self, *args):
-        pass
-
-
 class BtccWebsocketClient(BaseNamespace):
 
     # Events
@@ -248,27 +235,27 @@ class BtccWebsocketClient(BaseNamespace):
         self.__events = events
 
     def on_connect(self):
-        self.__dispatch(self.Event.ON_CONNECTED, None)
-        self.__queue.put((BtccWebsocketClient.Event.ON_CONNECTED, None))
+        self.__dispatch(self.Event.ON_CONNECTED)
 
     def on_disconnect(self):
-        self.__queue.put((BtccWebsocketClient.Event.ON_DISCONNECTED, None))
+        self.__dispatch(self.Event.ON_CONNECTED)
 
     def on_ticker(self, *args):
         # 接收到市场 Ticker 数据
-        self.__dispatch(self.Event.ON_TICKER, args[0]['ticker'])
-        self.__queue.put((BtccWebsocketClient.Event.ON_TICKER, bm.Ticker(**args[0]['ticker'])))
+        self.__dispatch(self.Event.ON_TICKER, bm.Ticker(**args[0]['ticker']))
 
     def on_trade(self, *args):
         # 接收到市场交易数据
-        self.__queue.put((BtccWebsocketClient.Event.ON_TRADE, bm.Trade(**args[0])))
+        self.__dispatch(self.Event.ON_TRADE, bm.Trade(**args[0]))
 
     def on_grouporder(self, *args):
         # 接收到市场深度
+        # TODO:
         self.__queue.put((BtccWebsocketClient.Event.ON_MARKETDEPTH, bm.MarketDepth(**(args[0]['grouporder']))))
 
     def on_order(self, *args):
         # 接收到订单状态更新
+        # TODO:
         self.__queue.put((BtccWebsocketClient.Event.ON_ORDER_BOOK_UPDATE, bm.Order(**args[0])))
 
     def on_account_info(self, *args):
@@ -280,7 +267,7 @@ class BtccWebsocketClient(BaseNamespace):
     def on_error(self, data):
         common.logger.error("Error: %s" % data)
 
-    def __dispatch(self, event_type, data):
+    def __dispatch(self, event_type, data=None):
         if self.__events is not None and event_type in self.__events.keys():
             self.__events[event_type].emit(data)
 
@@ -319,14 +306,13 @@ class WebSocketClientThread(threading.Thread):
         else:
             self.__socketIO.wait()
 
+        self.__ws_client.off('subscribe')
+        self.__ws_client.off('private')
+        self.__ws_client.disconnect()
+        self.__events[BtccWebsocketClient.Event.ON_DISCONNECTED].emit()
+
     def stop(self):
-        try:
-            self.__ws_client.off('subscribe')
-            self.__ws_client.off('private')
-            self.__ws_client.disconnect()
-            common.logger.info("WebSocketClientThread Stopping websocket client.")
-        except Exception, e:
-            common.logger.error("Error stopping websocket client: %s." % (str(e)))
+        common.logger.info("WebSocketClientThread Stopping websocket client.")
 
 
 def _get_postdata():

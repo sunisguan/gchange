@@ -5,7 +5,10 @@ from gchange.btcc import livebroker
 from pyalgotrade import strategy
 from pyalgotrade.technical import ma
 from pyalgotrade.technical import cross
-import threading
+import common
+from btcc_exchange import BtccExchange, BtccWebsocketClient
+import _do_strategy as ds
+
 
 class Strategy(strategy.BaseStrategy):
 
@@ -14,26 +17,25 @@ class Strategy(strategy.BaseStrategy):
     """
     def __init__(self, feed, brk):
         strategy.BaseStrategy.__init__(self, feed, brk)
-        smaPeriod = 60
-        self.__instrument = "btc"
-        self.__prices = feed[self.__instrument].getCloseDataSeries()
-        self.__sma = ma.SMA(self.__prices, smaPeriod)
+        sma_period = ds.CONFIG['SMA_PERIOD']
+        self.__instrument = common.CoinSymbol.BTC
+        self.__prices = feed[self.__instrument].getExtraDataSeries(common.OrderType.ASK)
+        self.__sma = ma.SMA(self.__prices, sma_period)
         self.__bid = None
         self.__ask = None
         self.__position = None
-        self.__posSize = 0.001
+        self.__posSize = ds.CONFIG['POSITION_SIZE']
 
-        # Subscribe to order book update events to get bid/ask prices to trade.
-        feed.get_marketdepth_update_event().subscribe(self.__onMarketdepth_update)
+        feed.get_exchange().subscribe_event(BtccWebsocketClient.Event.ON_TICKER, self.__on_ticker)
+        feed.get_exchange().subscribe_event(BtccWebsocketClient.Event.ON_DISCONNECTED, self.__on_disconnected)
 
-    def __onMarketdepth_update(self, marketdepth):
-        bid = marketdepth.get_top_bid()
-        ask = marketdepth.get_top_ask()
+    def __on_ticker(self, ticker):
+        self.__bid = ticker.get_bid()
+        self.__ask = ticker.get_ask()
 
-        if bid != self.__bid or ask != self.__ask:
-            self.__bid = bid.get_price()
-            self.__ask = ask.get_price()
-            #self.info("Order book updated. Best bid: %s. Best ask: %s" % (self.__bid, self.__ask))
+    def __on_disconnected(self, *args):
+        self.info('__on_disconnected')
+        self.stop()
 
     def onEnterOk(self, position):
         self.info("Position opened at %s" % (position.getEntryOrder().getExecutionInfo().getPrice()))
@@ -51,7 +53,7 @@ class Strategy(strategy.BaseStrategy):
         self.__position.exitLimit(self.__bid)
 
     def onFinish(self, bars):
-        print 'finish'
+        pass
 
     def enterSignal(self):
         return self.__position is None and cross.cross_above(self.__prices, self.__sma) > 0
@@ -62,7 +64,7 @@ class Strategy(strategy.BaseStrategy):
 
     def onBars(self, bars):
         bar = bars[self.__instrument]
-        #self.info("Price: %s. Volume: %s." % (bar.getClose(), bar.getVolume()))
+        self.info('Ask: %s, Bid: %s, Time: %s' % (bar.getExtraColumns()[common.OrderType.ASK], bar.getExtraColumns()[common.OrderType.BID], bar.getDateTime()))
 
         if self.__ask is None:
             return
@@ -74,93 +76,31 @@ class Strategy(strategy.BaseStrategy):
             self.info("Entry signal. Buy at %s" % (self.__ask))
             self.__position = self.enterLongLimit(self.__instrument, self.__ask, self.__posSize, True)
 
+"""
+========================================
+"""
 
 
-import time
+class SingleSMA(ds.StarategyRun):
 
-DURATION = 60*10
+    def __init__(self):
+        super(SingleSMA, self).__init__()
 
-class _ToStopThread(threading.Thread):
-    def __init__(self, feed):
-        super(_ToStopThread, self).__init__()
-        self.__feed = feed
-        self.__count = 1
+    def config_live(self):
+        exchange = BtccExchange(duration=ds.CONFIG['DURATION'])
+        bar_feed = LiveTradeFeed(exchange)
+        brk = livebroker.LiveBroker()
+        return Strategy(bar_feed, brk)
 
-    def start(self):
-        super(_ToStopThread, self).start()
-
-    def run(self):
-        super(_ToStopThread, self).run()
-
-        while self.__count < DURATION + 10:
-            time.sleep(1)
-            self.__count += 1
-        print 'stop feed'
-        self.__feed.stop()
-
-    def stop(self):
-        pass
-
-def __do_live():
-    bar_feed = LiveTradeFeed(duration=DURATION)
-    brk = livebroker.LiveBroker()
-    strat = Strategy(bar_feed, brk)
-
-    _thread = _ToStopThread(bar_feed)
-    _thread.start()
-
-    strat.run()
-    print '-------'
-
-def  __do_backtesting():
-    bar_feed = LiveTradeFeed(duration=DURATION)
-    brk = BacktestingBroker(1000, bar_feed)
-    strat = Strategy(bar_feed, brk)
-    plot = True
-
-    ############################################# don't change ############################
-    from pyalgotrade.stratanalyzer import returns
-    from pyalgotrade.stratanalyzer import sharpe
-    from pyalgotrade.stratanalyzer import drawdown
-    from pyalgotrade.stratanalyzer import trades
-    from pyalgotrade import plotter
-
-
-    retAnalyzer = returns.Returns()
-    strat.attachAnalyzer(retAnalyzer)
-    sharpeRatioAnalyzer = sharpe.SharpeRatio()
-    strat.attachAnalyzer(sharpeRatioAnalyzer)
-    drawDownAnalyzer = drawdown.DrawDown()
-    strat.attachAnalyzer(drawDownAnalyzer)
-    tradesAnalyzer = trades.Trades()
-    strat.attachAnalyzer(tradesAnalyzer)
-
-    if plot:
-        plt = plotter.StrategyPlotter(strat, True, True, True)
-
-    _thread = _ToStopThread(bar_feed)
-    _thread.start()
-
-    strat.run()
-    print '-------'
-    if plot:
-        plt.plot()
-
-        # 夏普率
-        sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
-        # 最大回撤
-        maxdd = drawDownAnalyzer.getMaxDrawDown()
-        # 收益率
-        return_ = retAnalyzer.getCumulativeReturns()[-1]
-        # 收益曲线
-        return_list = []
-        for item in retAnalyzer.getCumulativeReturns():
-            return_list.append(item)
+    def config_backtesting(self):
+        exchange = BtccExchange(duration=ds.CONFIG['DURATION'])
+        bar_feed = LiveTradeFeed(exchange)
+        brk = BacktestingBroker(ds.CONFIG['START_CAPTIAL'], bar_feed)
+        return Strategy(bar_feed, brk)
 
 
 def main():
-    __do_live()
-    #__do_backtesting()
+    SingleSMA().run()
 
 if __name__ == "__main__":
     main()

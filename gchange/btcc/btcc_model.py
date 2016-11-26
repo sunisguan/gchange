@@ -3,6 +3,7 @@ from peewee import *
 
 from gchange.btcc.btcc_model_db import *
 import common
+import datetime
 
 
 class UserProfile(object):
@@ -282,6 +283,37 @@ class Ticker(object):
         self.__prev_close = prev_close
         # 今日开盘价
         self.__open = open
+
+    def get_datetime(self):
+        return datetime.datetime.fromtimestamp(self.__date)
+
+    def get_high(self):
+        return self.__high
+
+    def get_low(self):
+        return self.__low
+
+    def get_open(self):
+        return self.__open
+
+    def get_price(self):
+        return self.__vwap
+
+    def get_close(self):
+        return self.__prev_close
+
+    def get_volume(self):
+        return self.__vol
+
+    def get_bid(self):
+        return self.__buy
+
+    def get_ask(self):
+        return self.__sell
+
+    def get_last(self):
+        return self.__last
+
 
     def __str__(self):
         s = [

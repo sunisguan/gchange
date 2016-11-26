@@ -1,77 +1,58 @@
 # -*- coding: utf-8 -*-
 from pyalgotrade import bar
 from pyalgotrade import barfeed
-from pyalgotrade import observer
 import common
-import time
 import datetime
-import websocket_client
-import Queue
 from .btcc_exchange import BtccExchange, BtccWebsocketClient
 
 
-class TradeBar(bar.Bar):
-    __slots__ = ('__dateTime', '__tradeId', '__price', '__amount')
-
-    def __init__(self, dateTime, trade):
-        self.__dateTime = dateTime
-        self.__tradeId = trade.getId()
-        self.__price = trade.getPrice()
-        self.__amount = trade.getAmount()
-        self.__buy = trade.isBuy()
-
-    def __setstate__(self, state):
-        (self.__dateTime, self.__tradeId, self.__price, self.__amount) = state
-
-    def __getstate__(self):
-        return (self.__dateTime, self.__tradeId, self.__price, self.__amount)
+class TickerBar(bar.Bar):
+    def __init__(self, datetime_, ticker):
+        self.__datetime = datetime_
+        self.__ticker = ticker
 
     def setUseAdjustedValue(self, useAdjusted):
-        if useAdjusted:
-            raise Exception('Adjusted close is not avaliable')
-
-    def getTradeId(self):
-        return self.__tradeId
-
-    def getFrequency(self):
-        return bar.Frequency.TRADE
-
-    def getDateTime(self):
-        return self.__dateTime
-
-    def getOpen(self, adjusted=False):
-        return self.__price
-
-    def getHigh(self, adjusted=False):
-        return self.__price
-
-    def getLow(self, adjusted=False):
-        return self.__price
-
-    def getClose(self, adjusted=False):
-        return self.__price
-
-    def getVolume(self):
-        return self.__amount
-
-    def getAdjClose(self):
-        return None
-
-    def getTypicalPrice(self):
-        return self.__price
-
-    def getPrice(self):
-        return self.__price
+        pass
 
     def getUseAdjValue(self):
         return False
 
-    def isBuy(self):
-        return self.__buy
+    def getDateTime(self):
+        return self.__datetime
 
-    def isSell(self):
-        return not self.__buy
+    def getOpen(self, adjusted=False):
+        #return self.__ticker.get_open()
+        return self.getPrice()
 
+    def getHigh(self, adjusted=False):
+        #return self.__ticker.get_high()
+        return self.getPrice()
+
+    def getLow(self, adjusted=False):
+        #return self.__ticker.get_low()
+        return self.getPrice()
+
+    def getClose(self, adjusted=False):
+        #return self.__ticker.get_close()
+        return self.getPrice()
+
+    def getVolume(self):
+        return self.__ticker.get_volume()
+
+    def getAdjClose(self):
+        return self.getClose()
+
+    def getFrequency(self):
+        return bar.Frequency.SECOND
+
+    def getPrice(self):
+        return self.__ticker.get_last()
+
+    def getExtraColumns(self):
+        return {
+            common.OrderType.ASK: self.__ticker.get_ask(),
+            common.OrderType.BID: self.__ticker.get_bid()
+        }
 
 class LiveTradeFeed(barfeed.BaseBarFeed):
     """
@@ -85,78 +66,47 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
         self.__barDicts = []
         self.registerInstrument(common.CoinSymbol.BTC)
         self.__prevTradeDateTime = None
-        self.__thread = None
-        self.__initializationOk = None
         self.__stopped = False
         self.__exchange = exchange
-        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_CONNECTED)
+        # 注册监听事件
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_CONNECTED, self.__on_connected)
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_DISCONNECTED, self.__on_disconnected)
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_TICKER, self.__on_ticker)
 
-    def getCurrentDateTime(self):
-        return websocket_client.get_current_datetime()
+    def get_exchange(self):
+        return self.__exchange
 
     def __initializeClient(self):
         return self.__exchange.start_websocket_client()
 
-    def __onConnected(self):
-        self.__initializationOk = True
+    def subscribe_ticker_event(self, handler):
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_TICKER, handler)
 
-    def __onDisconnected(self):
-        if self.__enableReconnection:
-            initialized = False
-            while not self.__stopped and not initialized:
-                common.logger.info('Reconnecting')
-                initialized = self.__initializeClient()
-                if not initialized:
-                    time.sleep(5)
-        else:
-            self.__stopped = True
+    def subscribe_disconnected_event(self, handler):
+        self.__exchange.subscribe_event(BtccWebsocketClient.Event.ON_DISCONNECTED, handler)
 
-    def __dispatchImpl(self, eventFilter):
-        ret = False
-        try:
-            eventType, eventData = self.__thread.get_queue().get(True, LiveTradeFeed.QUEUE_TIMEOUT)
-            if eventFilter is not None and eventType not in eventFilter:
-                return False
-            ret = True
-            if eventType == websocket_client.BtccWebsocketClient.ON_TRADE:
-                self.__onTrade(eventData)
-            elif eventType == websocket_client.BtccWebsocketClient.ON_ORDER_BOOK_UPDATE:
-                self.__orderBookUpdateEvent.emit(eventData)
-            elif eventType == websocket_client.BtccWebsocketClient.ON_CONNECTED:
-                self.__onConnected()
-            elif eventType == websocket_client.BtccWebsocketClient.ON_DISCONNECTED:
-                self.__onDisconnected()
-            elif eventType == websocket_client.BtccWebsocketClient.ON_MARKETDEPTH:
-                self.__onMarketDepth(eventData)
-                self.__marketdepth_update_event.emit(eventData)
-            else:
-                ret = False
-                common.logger.error('Invalid event received to dispatch: %s - %s' % (eventType, eventData))
-        except Queue.Empty:
-            pass
-        return ret
+    # 实现 web socket handler
+    def __on_ticker(self, ticker):
+        common.logger.debug('__on_ticker')
+        barDict = {common.CoinSymbol.BTC: TickerBar(self.__get_ticker_datetime(ticker), ticker)}
+        self.__barDicts.append(barDict)
 
-    def __getTradeDateTime(self, trade):
-        """
-        Bar datetimes should not duplicate. In case trade object datetimes conflict, we just move
-        one slightly forward
-        :param trade:
-        :return:
-        """
-        ret = trade.getDateTime()
+    def __on_connected(self):
+        common.logger.debug('__on_connected')
+
+    def __on_disconnected(self):
+        common.logger.debug('__on_disconected')
+
+    def __get_ticker_datetime(self, tickr):
+        ret = tickr.get_datetime()
         if ret == self.__prevTradeDateTime:
             ret += datetime.timedelta(microseconds=1)
         self.__prevTradeDateTime = ret
         return ret
 
-    def __onTrade(self, trade):
-        """
-        Build a bar for each trade
-        :param trade:
-        :return:
-        """
-        barDict = {common.CoinSymbol.BTC: TradeBar(self.__getTradeDateTime(trade), trade)}
-        self.__barDicts.append(barDict)
+    # 开始 override
+    def getCurrentDateTime(self):
+        return datetime.datetime.now()
 
     def barsHaveAdjClose(self):
         return False
@@ -177,54 +127,19 @@ class LiveTradeFeed(barfeed.BaseBarFeed):
     # This may raise
     def start(self):
         super(LiveTradeFeed, self).start()
-        if self.__thread is not None:
-            raise Exception('Already running')
-        elif not self.__initializeClient():
-            self.__stopped = True
-            raise Exception('Initialization failed')
-
-    def dispatch(self):
-        """
-        Note that we may return True even if we didn't dispatch any Bar event
-        :return:
-        """
-        ret = False
-        if self.__dispatchImpl(None):
-            ret = True
-        if super(LiveTradeFeed, self).dispatch():
-            ret = None
-        return ret
+        self.__exchange.start_websocket_client()
 
     # This should not raise
     def stop(self):
-        try:
+        if self.__exchange.stop_websocket_client():
             self.__stopped = True
-            if self.__thread is not None and self.__thread.is_alive():
-                common.logger.info('livefeed Shutting down websocket client')
-                self.__thread.stop()
-        except Exception, e:
-            common.logger.error('Error shutting down client: %s' % str(e))
 
-    # This should not raise
     def join(self):
-        if self.__thread is not None:
-            self.__thread.join()
+        self.__exchange.join_websocket_client()
 
     def eof(self):
         return self.__stopped
 
-    def getOrderBookUpdateEvent(self):
-        """
-        Returns the event that will be emitted when the orderbook gets updated
-
-        Eventh handlers should one parameter:OrderBookUpdate instance
-
-        :return: pyalgotrade.observer.Event
-        """
-        return self.__orderBookUpdateEvent
-
-    def get_marketdepth_update_event(self):
-        return self.__marketdepth_update_event
-
+    # 结束 override
 
 
