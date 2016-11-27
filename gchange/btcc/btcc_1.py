@@ -10,7 +10,7 @@ from btcc_exchange import BtccExchange, BtccWebsocketClient
 import _do_strategy as ds
 
 
-class Strategy(strategy.BaseStrategy):
+class Strategy(strategy.BaseStrategy, ds.StrategyHelper):
 
     """
     单均线策略
@@ -33,10 +33,21 @@ class Strategy(strategy.BaseStrategy):
         self.__bid = ticker.get_bid()
         self.__ask = ticker.get_ask()
 
-    def __on_disconnected(self, *args):
+    def __on_disconnected(self):
         self.info('__on_disconnected')
         self.stop()
 
+    # override StrategyHelper
+    def get_position(self):
+        return self.__position
+
+    def get_sma(self):
+        # return dict
+        return {
+            'single': self.__sma
+        }
+
+    # override Strategy
     def onEnterOk(self, position):
         self.info("Position opened at %s" % (position.getEntryOrder().getExecutionInfo().getPrice()))
 
@@ -81,7 +92,7 @@ class Strategy(strategy.BaseStrategy):
 """
 
 
-class SingleSMA(ds.StarategyRun):
+class SingleSMA(ds.StrategyRun):
 
     def __init__(self):
         super(SingleSMA, self).__init__()

@@ -382,6 +382,11 @@ class BtccHttpClient(object):
         #return self._handle_service_resp(requests.request('GET', 'https://pro-data.btcc.com/data/pro/orderbook'))
 
     def get_ticker(self, market=MarketParams.BTC_CNY):
+        """
+        返回北京时间昨天早上8点，到今天早上8点的数据
+        :param market:
+        :return:
+        """
         url = "https://data.btcchina.com/data/ticker?market=" + market
         return self._handle_service_resp(requests.request('GET', url))
 

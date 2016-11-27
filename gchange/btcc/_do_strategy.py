@@ -5,21 +5,39 @@ from pyalgotrade.stratanalyzer import drawdown
 from pyalgotrade.stratanalyzer import trades
 from pyalgotrade import plotter
 
+import common
 import abc
 
 CONFIG = {
     'BACKTESTING': True,
-    'DURATION': 60*2,
+    'DURATION': 60*60,
     'SMA_PARAS': [30, 60],
     'START_CAPTIAL': 1000.00,
     'POSITION_SIZE': 0.001,
-    'SMA_PERIOD': 20
+    'SMA_PERIOD': 40
 }
 
 
-class StarategyRun(object):
+class StrategyHelper(object):
 
     __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def get_position(self):
+        raise NotImplemented()
+
+    @abc.abstractmethod
+    def get_sma(self):
+        raise NotImplemented()
+
+
+class StrategyRun(object):
+
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        super(StrategyRun, self).__init__()
+        self.__strategy = None
 
     @abc.abstractmethod
     def config_live(self):
@@ -31,9 +49,11 @@ class StarategyRun(object):
 
     def run(self):
         if CONFIG['BACKTESTING']:
-            StarategyRun.__run_backtesting(self.config_backtesting())
+            self.__strategy = self.config_backtesting()
+            StrategyRun.__run_backtesting(self.__strategy)
         else:
-            StarategyRun.__run_live(self.config_live())
+            self.__strategy = self.config_live()
+            StrategyRun.__run_live(self.__strategy)
 
     @classmethod
     def __run_live(cls, strategy):
@@ -60,6 +80,9 @@ class StarategyRun(object):
         strategy.attachAnalyzer(tradesAnalyzer)
 
         plt = plotter.StrategyPlotter(strategy, True, True, True)
+        #plt.getOrCreateSubplot('position').addDataSeries('position', strategy.get_position())
+        for k, v in strategy.get_sma().iteritems():
+            plt.getInstrumentSubplot('indicator').addDataSeries(k, v)
 
         strategy.run()
 
@@ -68,11 +91,15 @@ class StarategyRun(object):
 
         # 夏普率
         sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
+        print '[夏普率: ', sharp, ']'
+
         # 最大回撤
         maxdd = drawDownAnalyzer.getMaxDrawDown()
+        print '[最大回撤: ', maxdd, ']'
+
         # 收益率
         return_ = retAnalyzer.getCumulativeReturns()[-1]
-        print sharp, maxdd, return_
+        print '[收益率: ', return_, ']'
 
         # 收益曲线
         return_list = []
